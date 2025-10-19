@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class BlackBoard : MonoBehaviour
+public class Blackboard : MonoBehaviour
 {
     [Header("Objective")]
     public bool hasKey = false;
