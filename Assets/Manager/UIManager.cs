@@ -7,17 +7,17 @@ public class UIManager : MonoBehaviour {
     public MatchManager match;
     public TextMeshProUGUI scoreText;
     public TextMeshProUGUI timerText;
-    public Dropdown tacticADropdown;
-    public Dropdown tacticBDropdown;
+    public TMP_Dropdown tacticADropdown;  // Changed to TMP_Dropdown
+    public TMP_Dropdown tacticBDropdown;
     public Button startButton;
     void Start(){
         startButton.onClick.AddListener(OnStartClick);
         // populate dropdowns if you have concrete assets; for now we set text options
         tacticADropdown.options.Clear();
-        tacticADropdown.options.Add(new Dropdown.OptionData("Aggressive"));
-        tacticADropdown.options.Add(new Dropdown.OptionData("Balanced"));
-        tacticADropdown.options.Add(new Dropdown.OptionData("Defensive"));
-        tacticBDropdown.options = new System.Collections.Generic.List<Dropdown.OptionData>(tacticADropdown.options);
+        tacticADropdown.options.Add(new TMP_Dropdown.OptionData("Aggressive"));  // Use TMP_Dropdown.OptionData
+        tacticADropdown.options.Add(new TMP_Dropdown.OptionData("Balanced"));    // Use TMP_Dropdown.OptionData
+        tacticADropdown.options.Add(new TMP_Dropdown.OptionData("Defensive"));   // Use TMP_Dropdown.OptionData
+        tacticBDropdown.options = new System.Collections.Generic.List<TMP_Dropdown.OptionData>(tacticADropdown.options);
     }
 
     void Update(){

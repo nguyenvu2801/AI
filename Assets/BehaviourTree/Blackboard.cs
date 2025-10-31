@@ -23,6 +23,17 @@ public class Blackboard : MonoBehaviour
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
     }
-
+    public PlayerAgent GetClosestToBall(Blackboard.Team t)
+    {
+        var agents = (t == Team.A) ? teamAAgents : teamBAgents;
+        PlayerAgent closest = null;
+        float minDist = float.MaxValue;
+        foreach (var a in agents)
+        {
+            float dist = Vector2.Distance(a.transform.position, ballPosition);
+            if (dist < minDist) { minDist = dist; closest = a; }
+        }
+        return closest;
+    }
     public enum Team { A, B, None }
 }

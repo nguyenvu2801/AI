@@ -32,7 +32,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 3
+  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &7744274379559951005
 SpriteRenderer:
@@ -128,8 +128,8 @@ MonoBehaviour:
   team: 1
   role: 2
   rb: {fileID: 2295987379953838377}
-  maxSpeed: 4
-  kickPower: 6
+  maxSpeed: 1
+  kickPower: 2
   formationPosition: {x: 0, y: 0}
   facing: {x: 1, y: 0}
   debugState: Idle

@@ -21,15 +21,15 @@ public class TeamManager : MonoBehaviour
 
     void SpawnDefaultFormation()
     {
-        // simple formation around center: spread players horizontally
+        // Simple formation around center: spread players horizontally, no Y offset to avoid drift issues
         for (int i = 0; i < playerCount; i++)
         {
-            var go = Instantiate(playerPrefab, (Vector3)teamCenter + new Vector3((i - (playerCount - 1) / 2f) * 1.2f, (team == Blackboard.Team.A) ? -1.5f : 1.5f, 0), Quaternion.identity, teamParent);
+            var go = Instantiate(playerPrefab, (Vector3)teamCenter + new Vector3((i - (playerCount - 1) / 2f) * 1.2f, 0f, 0), Quaternion.identity, teamParent); // Fix: Set Y=0
             var agent = go.GetComponent<PlayerAgent>();
             agent.team = team;
-            agent.formationPosition = go.transform.position - teamParent.position;
+            agent.formationPosition = go.transform.localPosition; // Use localPosition for relative
             players.Add(agent);
-            // assign roles roughly
+            // Assign roles roughly
             if (i == 0) agent.role = Role.Goalkeeper;
             else if (i == 1) agent.role = Role.Defender;
             else if (i == 2) agent.role = Role.Midfielder;

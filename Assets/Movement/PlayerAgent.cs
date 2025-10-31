@@ -1,4 +1,3 @@
-// Assets/Scripts/AI/PlayerAgent.cs
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -18,7 +17,11 @@ public class PlayerAgent : MonoBehaviour
     private BallController ball;
     [HideInInspector] public string debugState = "Idle";
 
-    void Awake() { rb = GetComponent<Rigidbody2D>(); }
+    void Awake()
+    {
+        rb = GetComponent<Rigidbody2D>();
+        rb.gravityScale = 0f; // Fix: Disable gravity for top-down
+    }
 
     void Start()
     {
@@ -41,11 +44,14 @@ public class PlayerAgent : MonoBehaviour
     {
         // Conditions
         var hasBall = new ConditionNode(() => ball.currentHolder == this);
-        var ballNearby = new ConditionNode(() => Vector2.Distance(transform.position, ball.transform.position) < 1.2f);
+        var ballNearby = new ConditionNode(() => Vector2.Distance(transform.position, ball.transform.position) < 3f); // Increased threshold for better reactivity
         var inShootingRange = new ConditionNode(() => {
-            Vector2 goal = (team == Blackboard.Team.A) ? new Vector2(12, 0) : new Vector2(-12, 0);
-            return Vector2.Distance(transform.position, goal) < 6f;
+            Vector2 goal = (team == Blackboard.Team.A) ? new Vector2(24, 0) : new Vector2(-24, 0);
+            return Vector2.Distance(transform.position, goal) < 12f;
         });
+        var ballLoose = new ConditionNode(() => ball.currentHolder == null);
+        var opponentHasBall = new ConditionNode(() => ball.currentHolder != null && ball.currentHolder.team != team);
+        var isClosestToBall = new ConditionNode(() => Blackboard.Instance.GetClosestToBall(team) == this); // Use Blackboard helper for coordination
 
         // Actions
         var actionShoot = new ActionNode(() => { return TryShoot(); });
@@ -55,14 +61,16 @@ public class PlayerAgent : MonoBehaviour
         var actionMoveToBall = new ActionNode(() => { MoveTowards(ball.transform.position); return BTStatus.Running; });
         var actionReturnForm = new ActionNode(() => { MoveTowards((Vector2)transform.parent.position + formationPosition); return BTStatus.Running; });
 
-        // Simple behavior: if has ball -> shoot if in range, else pass or dribble; else if ball nearby -> move to ball; else return to formation.
+        // Expanded BT: Handle possession, then chase loose (near/far, but only if closest), then tackle opponent, else formation
         root = new SelectorNode(
             new SequenceNode(hasBall, new SelectorNode(
                 new SequenceNode(inShootingRange, actionShoot),
                 actionPass,
                 actionDribble
             )),
-            new SequenceNode(ballNearby, actionMoveToBall),
+            new SequenceNode(ballLoose, ballNearby, actionMoveToBall), // Chase near loose ball
+            new SequenceNode(ballLoose, isClosestToBall, actionMoveToBall), // Only closest chases far loose ball
+            new SequenceNode(opponentHasBall, ballNearby, actionTackle), // Tackle if opponent has and nearby
             actionReturnForm
         );
     }
@@ -70,7 +78,7 @@ public class PlayerAgent : MonoBehaviour
     void Update()
     {
         if (root != null) root.Tick();
-        // face the direction of velocity
+        // Face the direction of velocity
         if (rb.velocity.magnitude > 0.01f) facing = rb.velocity.normalized;
     }
 
@@ -79,7 +87,7 @@ public class PlayerAgent : MonoBehaviour
     {
         Vector2 force = Steering.Seek(rb.position, target, rb, maxSpeed, 0.6f);
         rb.AddForce(force, ForceMode2D.Force);
-        // clamp speed
+        // Clamp speed
         if (rb.velocity.magnitude > maxSpeed) rb.velocity = rb.velocity.normalized * maxSpeed;
         debugState = "Moving";
     }
@@ -92,7 +100,7 @@ public class PlayerAgent : MonoBehaviour
 
     BTStatus TryShoot()
     {
-        // simplistic: aim to opponent goal
+        // Simplistic: aim to opponent goal
         Vector2 goal = (team == Blackboard.Team.A) ? new Vector2(12, 0) : new Vector2(-12, 0);
         ball.KickTowards(goal, kickPower);
         debugState = "Shoot";
@@ -101,7 +109,7 @@ public class PlayerAgent : MonoBehaviour
 
     BTStatus TryPass()
     {
-        // find nearest teammate in front
+        // Find nearest teammate in front
         var teammates = (team == Blackboard.Team.A) ? Blackboard.Instance.teamAAgents : Blackboard.Instance.teamBAgents;
         PlayerAgent best = null;
         float bestScore = float.NegativeInfinity;
@@ -109,7 +117,7 @@ public class PlayerAgent : MonoBehaviour
         {
             if (t == this) continue;
             float score = Vector2.Dot((t.transform.position - transform.position).normalized, (Quaternion.Euler(0, 0, 0) * Vector2.right)) - Vector2.Distance(transform.position, t.transform.position);
-            // small heuristic: prefer closer teammates
+            // Small heuristic: prefer closer teammates
             if (score > bestScore) { bestScore = score; best = t; }
         }
         if (best != null)
@@ -123,7 +131,7 @@ public class PlayerAgent : MonoBehaviour
 
     BTStatus DoDribble()
     {
-        // move towards opponent goal while keeping ball
+        // Move towards opponent goal while keeping ball
         Vector2 goal = (team == Blackboard.Team.A) ? new Vector2(12, 0) : new Vector2(-12, 0);
         MoveTowards(goal);
         debugState = "Dribble";
@@ -132,7 +140,16 @@ public class PlayerAgent : MonoBehaviour
 
     BTStatus TryTackle()
     {
-        // not implemented fully, return fail
+        // Basic implementation: 50% chance to steal if very close
+        if (ball.currentHolder != null && Vector2.Distance(transform.position, ball.transform.position) < 0.8f)
+        {
+            if (Random.value > 0.5f)
+            {
+                ball.GiveTo(this);
+                debugState = "TackleSuccess";
+                return BTStatus.Success;
+            }
+        }
         debugState = "TackleAttempt";
         return BTStatus.Failure;
     }
@@ -143,7 +160,7 @@ public class PlayerAgent : MonoBehaviour
         var ballCtrl = col.GetComponent<BallController>();
         if (ballCtrl != null && ballCtrl.currentHolder == null)
         {
-            // pick up ball
+            // Pick up ball
             ballCtrl.GiveTo(this);
         }
     }

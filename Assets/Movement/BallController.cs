@@ -8,19 +8,24 @@ public class BallController : MonoBehaviour
     public Rigidbody2D rb;
     public float kickForce = 8f;
     public PlayerAgent currentHolder;
-    void Awake() { rb = GetComponent<Rigidbody2D>(); }
+    void Awake()
+    {
+        rb = GetComponent<Rigidbody2D>();
+        rb.gravityScale = 0f; // Fix: Disable gravity
+        rb.drag = 0.5f; // Fix: Add drag for natural slowdown
+    }
 
     void Update()
     {
         if (currentHolder != null)
         {
-            // ball follows holder (small offset)
+            // Ball follows holder (small offset)
             rb.position = currentHolder.transform.position + (Vector3)(currentHolder.facing * 0.35f);
             rb.velocity = Vector2.zero;
         }
         else
         {
-            // rolling physics
+            // Rolling physics (drag handles slowdown)
         }
         if (Blackboard.Instance != null) Blackboard.Instance.ballPosition = rb.position;
     }
@@ -39,6 +44,7 @@ public class BallController : MonoBehaviour
 
     public void KickTowards(Vector2 target, float power)
     {
+        Debug.Log("aa");
         Vector2 dir = (target - (Vector2)transform.position).normalized;
         ReleaseWithForce(dir, power * kickForce);
     }

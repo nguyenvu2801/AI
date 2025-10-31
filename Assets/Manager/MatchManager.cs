@@ -11,7 +11,7 @@ public class MatchManager : MonoBehaviour
 
     void Start()
     {
-        // register blackboard and set up
+        // Register blackboard and set up
         if (bb == null) bb = Blackboard.Instance;
         bb.timeRemaining = matchDuration;
         bb.teamATactic = tacticA;
@@ -19,13 +19,10 @@ public class MatchManager : MonoBehaviour
         teamA.SetupTeam(tacticA, new Vector2(-6, 0), Blackboard.Team.A);
         teamB.SetupTeam(tacticB, new Vector2(6, 0), Blackboard.Team.B);
 
-        // place ball at center
+        // Place ball at center
         ball.transform.position = Vector2.zero;
         bb.ballObject = ball.gameObject;
         bb.ballPosition = ball.transform.position;
-        // optionally give ball to random player
-        var aPlayers = teamA.GetPlayers();
-        if (aPlayers.Count > 0) ball.GiveTo(aPlayers[Random.Range(0, aPlayers.Count)]);
     }
 
     void Update()
@@ -40,7 +37,7 @@ public class MatchManager : MonoBehaviour
     void EndMatch()
     {
         Debug.Log("Match ended");
-        // stop AI maybe via a simple flag (not implemented here)
+        // Stop AI maybe via a simple flag (not implemented here)
         enabled = false;
     }
 }
