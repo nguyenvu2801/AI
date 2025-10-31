@@ -1,11 +1,12 @@
 // Assets/Scripts/UI/UIManager.cs
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour {
     public MatchManager match;
-    public Text scoreText;
-    public Text timerText;
+    public TextMeshProUGUI scoreText;
+    public TextMeshProUGUI timerText;
     public Dropdown tacticADropdown;
     public Dropdown tacticBDropdown;
     public Button startButton;
