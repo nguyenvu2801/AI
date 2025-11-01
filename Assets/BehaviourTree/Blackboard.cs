@@ -10,6 +10,10 @@ public class Blackboard : MonoBehaviour
     public Team currentBallPossessionTeam; // small enum below
     public TeamTactic teamATactic;
     public TeamTactic teamBTactic;
+    public Vector2 goalAPosition;
+    public Vector2 goalBPosition;
+    public Vector2 TeamAcenter;
+    public Vector2 TeamBcenter;
     public float timeRemaining;
     public int scoreA;
     public int scoreB;

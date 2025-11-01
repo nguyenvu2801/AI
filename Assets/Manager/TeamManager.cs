@@ -6,7 +6,7 @@ public class TeamManager : MonoBehaviour
     public Blackboard.Team team;
     public GameObject playerPrefab;
     public Transform teamParent;
-    public int playerCount = 5;
+    private int playerCount = 11;
     public TeamTactic currentTactic;
     public Vector2 teamCenter = Vector2.zero;
     private List<PlayerAgent> players = new List<PlayerAgent>();
@@ -16,26 +16,58 @@ public class TeamManager : MonoBehaviour
         currentTactic = tactic;
         teamCenter = center;
         team = t;
-        SpawnDefaultFormation();
+        SpawnFormation();
     }
 
-    void SpawnDefaultFormation()
+    void SpawnFormation()
     {
-        // Simple formation around center: spread players horizontally, no Y offset to avoid drift issues
+        if (currentTactic?.formation == null)
+        {
+            Debug.LogError($"No formation assigned to tactic '{currentTactic?.name}' for team {team}");
+            return;
+        }
+
+        var formationData = currentTactic.formation;
+        if (formationData.positions.Length != playerCount || formationData.roles.Length != playerCount)
+        {
+            Debug.LogError($"Formation '{formationData.formationName}' has {formationData.positions.Length} positions, expected {playerCount}");
+            return;
+        }
+
+        // Clear existing players if respawning
+        foreach (var player in players) Destroy(player.gameObject);
+        players.Clear();
+
         for (int i = 0; i < playerCount; i++)
         {
-            var go = Instantiate(playerPrefab, (Vector3)teamCenter + new Vector3((i - (playerCount - 1) / 2f) * 1.2f, 0f, 0), Quaternion.identity, teamParent); // Fix: Set Y=0
+            Vector2 relPos = formationData.positions[i];
+
+            // Mirror X for Team B (assumes positions defined for Team A: negative X = defense)
+            if (team == Blackboard.Team.B)
+            {
+                relPos.x = -relPos.x;
+            }
+
+            Vector3 worldPos = teamParent == null
+                ? (Vector3)(teamCenter + relPos)
+                : teamParent.TransformPoint((Vector3)(teamCenter + relPos)); // If teamParent not at origin
+
+            var go = Instantiate(playerPrefab, worldPos, Quaternion.identity, teamParent);
             var agent = go.GetComponent<PlayerAgent>();
+            if (agent == null)
+            {
+                Debug.LogError("PlayerPrefab missing PlayerAgent!");
+                Destroy(go);
+                continue;
+            }
+
             agent.team = team;
-            agent.formationPosition = go.transform.localPosition; // Use localPosition for relative
+            agent.formationPosition = new Vector3(relPos.x, relPos.y, 0f); // Mirrored relative pos for AI
+            agent.role = formationData.roles[i];
             players.Add(agent);
-            // Assign roles roughly
-            if (i == 0) agent.role = Role.Goalkeeper;
-            else if (i == 1) agent.role = Role.Defender;
-            else if (i == 2) agent.role = Role.Midfielder;
-            else if (i == 3) agent.role = Role.Winger;
-            else agent.role = Role.Striker;
         }
+
+        Debug.Log($"Spawned {playerCount} players in {formationData.formationName} for {team}");
     }
 
     public List<PlayerAgent> GetPlayers() { return players; }

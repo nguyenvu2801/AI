@@ -12,5 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f755be572d9c70447941b00249b22434, type: 3}
   m_Name: Defensive
   m_EditorClassIdentifier: 
+  formation: {fileID: 11400000, guid: 0f59e25af2200d74585de27ef731e4e6, type: 2}
   tacticName: Defensive
   attackBias: -0.25

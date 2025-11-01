@@ -34,6 +34,7 @@ public class BallController : MonoBehaviour
     {
         currentHolder = agent;
         agent.OnGainBall(this);
+        Debug.Log("bbb");
     }
 
     public void ReleaseWithForce(Vector2 direction, float power)

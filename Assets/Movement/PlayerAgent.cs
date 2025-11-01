@@ -46,8 +46,8 @@ public class PlayerAgent : MonoBehaviour
         var hasBall = new ConditionNode(() => ball.currentHolder == this);
         var ballNearby = new ConditionNode(() => Vector2.Distance(transform.position, ball.transform.position) < 3f); // Increased threshold for better reactivity
         var inShootingRange = new ConditionNode(() => {
-            Vector2 goal = (team == Blackboard.Team.A) ? new Vector2(24, 0) : new Vector2(-24, 0);
-            return Vector2.Distance(transform.position, goal) < 12f;
+            Vector2 goal = (team == Blackboard.Team.A) ? Blackboard.Instance.goalAPosition : Blackboard.Instance.goalBPosition;
+            return Vector2.Distance(transform.position, goal) < 12f;  // Adjust threshold if field size changes
         });
         var ballLoose = new ConditionNode(() => ball.currentHolder == null);
         var opponentHasBall = new ConditionNode(() => ball.currentHolder != null && ball.currentHolder.team != team);
@@ -100,8 +100,7 @@ public class PlayerAgent : MonoBehaviour
 
     BTStatus TryShoot()
     {
-        // Simplistic: aim to opponent goal
-        Vector2 goal = (team == Blackboard.Team.A) ? new Vector2(12, 0) : new Vector2(-12, 0);
+        Vector2 goal = (team == Blackboard.Team.A) ? Blackboard.Instance.goalAPosition : Blackboard.Instance.goalBPosition;
         ball.KickTowards(goal, kickPower);
         debugState = "Shoot";
         return BTStatus.Success;
@@ -131,8 +130,7 @@ public class PlayerAgent : MonoBehaviour
 
     BTStatus DoDribble()
     {
-        // Move towards opponent goal while keeping ball
-        Vector2 goal = (team == Blackboard.Team.A) ? new Vector2(12, 0) : new Vector2(-12, 0);
+        Vector2 goal = (team == Blackboard.Team.A) ? Blackboard.Instance.goalAPosition : Blackboard.Instance.goalBPosition;
         MoveTowards(goal);
         debugState = "Dribble";
         return BTStatus.Running;

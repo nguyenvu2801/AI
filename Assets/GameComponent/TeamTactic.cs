@@ -5,6 +5,7 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "TacticalKick/TeamTactic")]
 public class TeamTactic : ScriptableObject
 {
+    public Formation formation;
     public string tacticName = "Balanced";
     [Range(-1f, 1f)] public float attackBias = 0f; // +0.25 for Aggressive, -0.25 for Defensive
     public static TeamTactic Aggressive => CreateInstance<TeamTactic>().Init("Aggressive", 0.25f);

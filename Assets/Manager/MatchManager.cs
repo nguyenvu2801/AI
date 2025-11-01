@@ -16,13 +16,21 @@ public class MatchManager : MonoBehaviour
         bb.timeRemaining = matchDuration;
         bb.teamATactic = tacticA;
         bb.teamBTactic = tacticB;
-        teamA.SetupTeam(tacticA, new Vector2(-6, 0), Blackboard.Team.A);
-        teamB.SetupTeam(tacticB, new Vector2(6, 0), Blackboard.Team.B);
+        teamA.SetupTeam(tacticA, Blackboard.Instance.TeamAcenter, Blackboard.Team.A);
+        teamB.SetupTeam(tacticB, Blackboard.Instance.TeamBcenter, Blackboard.Team.B);
 
         // Place ball at center
         ball.transform.position = Vector2.zero;
         bb.ballObject = ball.gameObject;
         bb.ballPosition = ball.transform.position;
+        var goals = FindObjectsOfType<Goal>();
+        foreach (var goal in goals)
+        {
+            if (goal.scoringTeam == Blackboard.Team.A)
+                bb.goalAPosition = (Vector2)goal.transform.position;
+            else if (goal.scoringTeam == Blackboard.Team.B)
+                bb.goalBPosition = (Vector2)goal.transform.position;
+        }
     }
 
     void Update()

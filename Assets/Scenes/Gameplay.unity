@@ -123,6 +123,11 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &36783385 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5026185175764199412, guid: 875ce5779dd0a4340900970da807d8de, type: 3}
+  m_PrefabInstance: {fileID: 1436936801}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &86264424
 GameObject:
   m_ObjectHideFlags: 0
@@ -222,6 +227,7 @@ GameObject:
   - component: {fileID: 159952696}
   - component: {fileID: 159952695}
   - component: {fileID: 159952694}
+  - component: {fileID: 159952697}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -272,7 +278,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 5
+  orthographic size: 14.11
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -303,6 +309,50 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &159952697
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 159952693}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_RenderShadows: 1
+  m_RequiresDepthTextureOption: 2
+  m_RequiresOpaqueTextureOption: 2
+  m_CameraType: 0
+  m_Cameras: []
+  m_RendererIndex: -1
+  m_VolumeLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_VolumeTrigger: {fileID: 0}
+  m_VolumeFrameworkUpdateModeOption: 2
+  m_RenderPostProcessing: 0
+  m_Antialiasing: 0
+  m_AntialiasingQuality: 2
+  m_StopNaN: 0
+  m_Dithering: 0
+  m_ClearDepth: 1
+  m_AllowXRRendering: 1
+  m_AllowHDROutput: 1
+  m_UseScreenCoordOverride: 0
+  m_ScreenSizeOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
+  m_RequiresDepthTexture: 0
+  m_RequiresColorTexture: 0
+  m_Version: 2
+  m_TaaSettings:
+    quality: 3
+    frameInfluence: 0.1
+    jitterScale: 1
+    mipBias: 0
+    varianceClampScale: 0.9
+    contrastAdaptiveSharpening: 0
 --- !u!1 &187839245
 GameObject:
   m_ObjectHideFlags: 0
@@ -446,7 +496,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 222850971}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -1.67, y: -1.81, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -468,7 +518,6 @@ MonoBehaviour:
   team: 0
   playerPrefab: {fileID: 8786130168909658997, guid: 6ad1fc4473bae8e4b8f57d7643d5372b, type: 3}
   teamParent: {fileID: 222850972}
-  playerCount: 5
   currentTactic: {fileID: 0}
   teamCenter: {x: 0, y: 0}
 --- !u!1 &310122673
@@ -516,10 +565,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ballPosition: {x: 0, y: 0}
-  ballObject: {fileID: 0}
+  ballObject: {fileID: 36783385}
   currentBallPossessionTeam: 0
-  teamATactic: {fileID: 0}
-  teamBTactic: {fileID: 0}
+  teamATactic: {fileID: 11400000, guid: 39a95b58a4926164cbe1980def03ca9c, type: 2}
+  teamBTactic: {fileID: 11400000, guid: 39a95b58a4926164cbe1980def03ca9c, type: 2}
+  goalAPosition: {x: -22.25, y: 0}
+  goalBPosition: {x: 22.25, y: 0}
+  TeamAcenter: {x: 0, y: 0}
+  TeamBcenter: {x: 0, y: 0}
   timeRemaining: 0
   scoreA: 0
   scoreB: 0
@@ -804,8 +857,8 @@ MonoBehaviour:
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 0
-  m_HorizontalAlignment: 1
-  m_VerticalAlignment: 256
+  m_HorizontalAlignment: 2
+  m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_wordSpacing: 0
@@ -1206,7 +1259,7 @@ BoxCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 1
+  m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
   m_Offset: {x: 0, y: 0}
@@ -2486,8 +2539,8 @@ MonoBehaviour:
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 0
-  m_HorizontalAlignment: 1
-  m_VerticalAlignment: 256
+  m_HorizontalAlignment: 2
+  m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_wordSpacing: 0
@@ -2702,7 +2755,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1272267027}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -22.25, y: -0.43, z: 0}
+  m_LocalPosition: {x: -22.25, y: 0, z: 0}
   m_LocalScale: {x: 4.2535, y: 6.9155, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2810,7 +2863,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1281748336}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -1.67, y: -1.81, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2832,7 +2885,6 @@ MonoBehaviour:
   team: 1
   playerPrefab: {fileID: 8403134981139032220, guid: 1cb0a43d58e78124c87a144b8414a19d, type: 3}
   teamParent: {fileID: 1281748337}
-  playerCount: 5
   currentTactic: {fileID: 0}
   teamCenter: {x: 0, y: 0}
 --- !u!1 &1403327509
@@ -3465,7 +3517,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 6579182323416255905, guid: 875ce5779dd0a4340900970da807d8de, type: 3}
   m_PrefabInstance: {fileID: 1436936801}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 36783385}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 13309feedd49f8d429e2a29f5355073d, type: 3}
@@ -3974,7 +4026,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1885639923}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 22.17, y: -0.43, z: 0}
+  m_LocalPosition: {x: 22.25, y: 0, z: 0}
   m_LocalScale: {x: 4.2535, y: 6.9155, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
