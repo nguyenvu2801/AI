@@ -9,13 +9,14 @@ public class PlayerAgent : MonoBehaviour
     public Rigidbody2D rb;
     public float maxSpeed = 4f;
     public float kickPower = 6f;
-    public Vector2 formationPosition; // relative to team center
+    public float ShootDistance = 8f;
+    public Vector3 formationPosition; // relative to team center
     [HideInInspector] public Vector2 facing = Vector2.right;
 
     // BT
     private BTNode root;
     private BallController ball;
-    [HideInInspector] public string debugState = "Idle";
+    public string debugState = "Idle";
 
     void Awake()
     {
@@ -58,8 +59,22 @@ public class PlayerAgent : MonoBehaviour
         var actionPass = new ActionNode(() => { return TryPass(); });
         var actionDribble = new ActionNode(() => { return DoDribble(); });
         var actionTackle = new ActionNode(() => { return TryTackle(); });
-        var actionMoveToBall = new ActionNode(() => { MoveTowards(ball.transform.position); return BTStatus.Running; });
-        var actionReturnForm = new ActionNode(() => { MoveTowards((Vector2)transform.parent.position + formationPosition); return BTStatus.Running; });
+        var actionMoveToBall = new ActionNode(() => {
+            if (MoveTowards(ball.transform.position)||ball.currentHolder == this)
+            {
+                debugState = "HasBall";
+                return BTStatus.Success;
+            }
+            return BTStatus.Running;
+        });
+        var actionReturnForm = new ActionNode(() => { 
+            if (MoveTowards(formationPosition))
+            {
+                debugState = "Idle";
+                return BTStatus.Success;
+            }
+            return BTStatus.Running; 
+        });
 
         // Expanded BT: Handle possession, then chase loose (near/far, but only if closest), then tackle opponent, else formation
         root = new SelectorNode(
@@ -83,13 +98,19 @@ public class PlayerAgent : MonoBehaviour
     }
 
     // Movement helpers
-    void MoveTowards(Vector2 target)
+    bool MoveTowards(Vector2 target,float AcceptDistance = 0.1f)
     {
+        if(Vector2.Distance(transform.position, target) < AcceptDistance)
+        {
+            return true;
+        }
         Vector2 force = Steering.Seek(rb.position, target, rb, maxSpeed, 0.6f);
         rb.AddForce(force, ForceMode2D.Force);
         // Clamp speed
         if (rb.velocity.magnitude > maxSpeed) rb.velocity = rb.velocity.normalized * maxSpeed;
+
         debugState = "Moving";
+        return false;
     }
 
     // Ball-actions
@@ -108,20 +129,21 @@ public class PlayerAgent : MonoBehaviour
 
     BTStatus TryPass()
     {
+        Vector2 goalPos = (team == Blackboard.Team.A) ? Blackboard.Instance.goalAPosition : Blackboard.Instance.goalBPosition;
         // Find nearest teammate in front
         var teammates = (team == Blackboard.Team.A) ? Blackboard.Instance.teamAAgents : Blackboard.Instance.teamBAgents;
         PlayerAgent best = null;
-        float bestScore = float.NegativeInfinity;
+        float bestScore = Vector2.Distance(transform.position, goalPos) * 1.4f;
         foreach (var t in teammates)
         {
             if (t == this) continue;
-            float score = Vector2.Dot((t.transform.position - transform.position).normalized, (Quaternion.Euler(0, 0, 0) * Vector2.right)) - Vector2.Distance(transform.position, t.transform.position);
+            float score = Vector2.Distance(t.transform.position,goalPos) * 1.4f + Vector2.Distance(transform.position, t.transform.position);
             // Small heuristic: prefer closer teammates
-            if (score > bestScore) { bestScore = score; best = t; }
+            if (score < bestScore) { bestScore = score; best = t; }
         }
         if (best != null)
         {
-            ball.ReleaseWithForce((best.transform.position - transform.position).normalized, kickPower * 0.9f);
+            ball.ReleaseWithForce((best.transform.position - transform.position).normalized, kickPower * 1.9f);
             debugState = "Pass";
             return BTStatus.Success;
         }
@@ -130,8 +152,14 @@ public class PlayerAgent : MonoBehaviour
 
     BTStatus DoDribble()
     {
+
         Vector2 goal = (team == Blackboard.Team.A) ? Blackboard.Instance.goalAPosition : Blackboard.Instance.goalBPosition;
-        MoveTowards(goal);
+        if (MoveTowards(goal, ShootDistance))
+        {
+            debugState = "Idle";
+            return BTStatus.Success;
+        };
+        
         debugState = "Dribble";
         return BTStatus.Running;
     }
