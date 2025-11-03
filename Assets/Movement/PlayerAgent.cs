@@ -10,6 +10,7 @@ public class PlayerAgent : MonoBehaviour
     public float maxSpeed = 4f;
     public float kickPower = 6f;
     public float ShootDistance = 8f;
+    public float TackleChance = 0.5f;
     public Vector3 formationPosition; // relative to team center
     [HideInInspector] public Vector2 facing = Vector2.right;
 
@@ -60,7 +61,7 @@ public class PlayerAgent : MonoBehaviour
         var actionDribble = new ActionNode(() => { return DoDribble(); });
         var actionTackle = new ActionNode(() => { return TryTackle(); });
         var actionMoveToBall = new ActionNode(() => {
-            if (MoveTowards(ball.transform.position)||ball.currentHolder == this)
+            if (ball.currentHolder == this || MoveTowards(ball.transform.position))
             {
                 debugState = "HasBall";
                 return BTStatus.Success;
@@ -100,14 +101,19 @@ public class PlayerAgent : MonoBehaviour
     // Movement helpers
     bool MoveTowards(Vector2 target,float AcceptDistance = 0.1f)
     {
-        if(Vector2.Distance(transform.position, target) < AcceptDistance)
+        Vector2 pos = rb.position;
+        Vector2 dir = target - pos;
+        float dist = dir.magnitude;
+
+        if (dist < AcceptDistance)
         {
+            rb.velocity = Vector2.zero;
             return true;
         }
-        Vector2 force = Steering.Seek(rb.position, target, rb, maxSpeed, 0.6f);
-        rb.AddForce(force, ForceMode2D.Force);
-        // Clamp speed
-        if (rb.velocity.magnitude > maxSpeed) rb.velocity = rb.velocity.normalized * maxSpeed;
+
+        dir.Normalize();
+        Vector2 desiredVelocity = dir * maxSpeed;
+        rb.velocity = Vector2.Lerp(rb.velocity, desiredVelocity, Time.deltaTime * 5f);
 
         debugState = "Moving";
         return false;
@@ -169,7 +175,7 @@ public class PlayerAgent : MonoBehaviour
         // Basic implementation: 50% chance to steal if very close
         if (ball.currentHolder != null && Vector2.Distance(transform.position, ball.transform.position) < 0.8f)
         {
-            if (Random.value > 0.5f)
+            if (Random.value > TackleChance)
             {
                 ball.GiveTo(this);
                 debugState = "TackleSuccess";
