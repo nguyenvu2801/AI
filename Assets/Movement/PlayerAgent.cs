@@ -7,10 +7,14 @@ public class PlayerAgent : MonoBehaviour
     public Blackboard.Team team = Blackboard.Team.A;
     public Role role = Role.Midfielder;
     public Rigidbody2D rb;
-    public float maxSpeed = 4f;
-    public float kickPower = 6f;
-    public float ShootDistance = 8f;
-    public float TackleChance = 0.5f;
+    private float maxSpeed;
+    private float kickPower;
+    private float ShootDistance;
+    private float TackleChance;
+
+    [Header("Stats (from SO)")]
+    public RoleStats roleStats;
+
     public Vector3 formationPosition; // relative to team center
     [HideInInspector] public Vector2 facing = Vector2.right;
 
@@ -27,6 +31,7 @@ public class PlayerAgent : MonoBehaviour
 
     void Start()
     {
+        ApplyRoleStats();
         ball = FindObjectOfType<BallController>();
         RegisterToBlackboard();
         BuildBehaviorTree();
@@ -175,7 +180,7 @@ public class PlayerAgent : MonoBehaviour
         // Basic implementation: 50% chance to steal if very close
         if (ball.currentHolder != null && Vector2.Distance(transform.position, ball.transform.position) < 0.8f)
         {
-            if (Random.value > TackleChance)
+            if (Random.value > 1 - TackleChance)
             {
                 ball.GiveTo(this);
                 debugState = "TackleSuccess";
@@ -196,7 +201,20 @@ public class PlayerAgent : MonoBehaviour
             ballCtrl.GiveTo(this);
         }
     }
-
+    void ApplyRoleStats()
+    {
+        if (roleStats != null)
+        {
+            maxSpeed = roleStats.maxSpeed;
+            kickPower = roleStats.kickPower;
+            ShootDistance = roleStats.shootDistance;
+            TackleChance = roleStats.tackleChance;
+        }
+        else
+        {
+            Debug.LogWarning($"{name} has no RoleStats assigned!");
+        }
+    }
     void OnDrawGizmos()
     {
         Gizmos.color = Color.yellow;

@@ -8,9 +8,26 @@ public class TeamManager : MonoBehaviour
     public Transform teamParent;
     private int playerCount = 11;
     public TeamTactic currentTactic;
+
     public Vector2 teamCenter = Vector2.zero;
     private List<PlayerAgent> players = new List<PlayerAgent>();
-
+    private Dictionary<Role, RoleStats> roleStatsMap = new Dictionary<Role, RoleStats>();
+    void Awake()
+    {
+        // Load all RoleStats from Resources/RoleStats folder (adjust path if different)
+        RoleStats[] allStats = Resources.LoadAll<RoleStats>("RoleStats");
+        foreach (var stats in allStats)
+        {
+            if (!roleStatsMap.ContainsKey(stats.role))
+            {
+                roleStatsMap[stats.role] = stats;
+            }
+            else
+            {
+                Debug.LogWarning($"Duplicate RoleStats for role {stats.role}");
+            }
+        }
+    }
     public void SetupTeam(TeamTactic tactic, Vector2 center, Blackboard.Team t)
     {
         currentTactic = tactic;
@@ -64,6 +81,7 @@ public class TeamManager : MonoBehaviour
             agent.team = team;
             agent.formationPosition = new Vector3(relPos.x, relPos.y, 0f); // Mirrored relative pos for AI
             agent.role = formationData.roles[i];
+            agent.roleStats = roleStatsMap.ContainsKey(agent.role) ? roleStatsMap[agent.role] : null;
             players.Add(agent);
         }
 
