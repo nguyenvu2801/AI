@@ -79,7 +79,7 @@ public class TeamManager : MonoBehaviour
             }
 
             agent.team = team;
-            agent.formationPosition = new Vector3(relPos.x, relPos.y, 0f); // Mirrored relative pos for AI
+            agent.formationWorldPos = new Vector2(relPos.x, relPos.y);
             agent.role = formationData.roles[i];
             agent.roleStats = roleStatsMap.ContainsKey(agent.role) ? roleStatsMap[agent.role] : null;
             players.Add(agent);

@@ -15,7 +15,9 @@ public class PlayerAgent : MonoBehaviour
     [Header("Stats (from SO)")]
     public RoleStats roleStats;
 
-    public Vector3 formationPosition; // relative to team center
+    [Header("Formation")]
+    public Vector2 formationWorldPos; // World position of formation slot
+    private float pressDistance; // relative to team center
     [HideInInspector] public Vector2 facing = Vector2.right;
 
     // BT
@@ -61,6 +63,7 @@ public class PlayerAgent : MonoBehaviour
         var isClosestToBall = new ConditionNode(() => Blackboard.Instance.GetClosestToBall(team) == this); // Use Blackboard helper for coordination
 
         // Actions
+        var actionPressMove = new ActionNode(() => PressMove());
         var actionShoot = new ActionNode(() => { return TryShoot(); });
         var actionPass = new ActionNode(() => { return TryPass(); });
         var actionDribble = new ActionNode(() => { return DoDribble(); });
@@ -74,7 +77,7 @@ public class PlayerAgent : MonoBehaviour
             return BTStatus.Running;
         });
         var actionReturnForm = new ActionNode(() => { 
-            if (MoveTowards(formationPosition))
+            if (MoveTowards(formationWorldPos))
             {
                 debugState = "Idle";
                 return BTStatus.Success;
@@ -91,8 +94,11 @@ public class PlayerAgent : MonoBehaviour
             )),
             new SequenceNode(ballLoose, ballNearby, actionMoveToBall), // Chase near loose ball
             new SequenceNode(ballLoose, isClosestToBall, actionMoveToBall), // Only closest chases far loose ball
-            new SequenceNode(opponentHasBall, ballNearby, actionTackle), // Tackle if opponent has and nearby
-            actionReturnForm
+           new SequenceNode(opponentHasBall, new SelectorNode(
+            new SequenceNode(ballNearby, actionTackle),
+            actionPressMove
+        )),
+        actionReturnForm // Default: formation
         );
     }
 
@@ -190,7 +196,21 @@ public class PlayerAgent : MonoBehaviour
         debugState = "TackleAttempt";
         return BTStatus.Failure;
     }
+    BTStatus PressMove()
+    {
+        Vector2 ballPos = ball.transform.position;
+        Vector2 dir = (ballPos - formationWorldPos).normalized;
+        float distToBall = Vector2.Distance(formationWorldPos, ballPos);
+        float pushDist = Mathf.Min(distToBall * 0.7f, pressDistance); // Push 70% towards ball, capped by role stat
+        Vector2 pressTarget = formationWorldPos + dir * pushDist;
 
+        if (MoveTowards(pressTarget))
+        {
+            return BTStatus.Success;
+        }
+        debugState = "Press";
+        return BTStatus.Running;
+    }
     // OnCollision: if colliding and not holding ball, maybe gain possession
     void OnTriggerEnter2D(Collider2D col)
     {
@@ -209,6 +229,7 @@ public class PlayerAgent : MonoBehaviour
             kickPower = roleStats.kickPower;
             ShootDistance = roleStats.shootDistance;
             TackleChance = roleStats.tackleChance;
+            pressDistance = roleStats.pressDistance;
         }
         else
         {
