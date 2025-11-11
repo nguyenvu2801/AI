@@ -60,10 +60,11 @@ public class PlayerAgent : MonoBehaviour
         });
         var ballLoose = new ConditionNode(() => ball.currentHolder == null);
         var opponentHasBall = new ConditionNode(() => ball.currentHolder != null && ball.currentHolder.team != team);
+        var teamHasBall = new ConditionNode(() => ball.currentHolder != null && ball.currentHolder.team == team);
         var isClosestToBall = new ConditionNode(() => Blackboard.Instance.GetClosestToBall(team) == this); // Use Blackboard helper for coordination
 
         // Actions
-        var actionPressMove = new ActionNode(() => PressMove());
+        var actionSupportMove = new ActionNode(() => SupportMove());
         var actionShoot = new ActionNode(() => { return TryShoot(); });
         var actionPass = new ActionNode(() => { return TryPass(); });
         var actionDribble = new ActionNode(() => { return DoDribble(); });
@@ -76,16 +77,16 @@ public class PlayerAgent : MonoBehaviour
             }
             return BTStatus.Running;
         });
-        var actionReturnForm = new ActionNode(() => { 
+        var actionReturnForm = new ActionNode(() => {
             if (MoveTowards(formationWorldPos))
             {
                 debugState = "Idle";
                 return BTStatus.Success;
             }
-            return BTStatus.Running; 
+            return BTStatus.Running;
         });
 
-        // Expanded BT: Handle possession, then chase loose (near/far, but only if closest), then tackle opponent, else formation
+        // Expanded BT: Handle possession, then chase loose (near/far, but only if closest), then support if team has ball, then tackle/return if opponent has, else formation
         root = new SelectorNode(
             new SequenceNode(hasBall, new SelectorNode(
                 new SequenceNode(inShootingRange, actionShoot),
@@ -94,11 +95,12 @@ public class PlayerAgent : MonoBehaviour
             )),
             new SequenceNode(ballLoose, ballNearby, actionMoveToBall), // Chase near loose ball
             new SequenceNode(ballLoose, isClosestToBall, actionMoveToBall), // Only closest chases far loose ball
-           new SequenceNode(opponentHasBall, new SelectorNode(
-            new SequenceNode(ballNearby, actionTackle),
-            actionPressMove
-        )),
-        actionReturnForm // Default: formation
+            new SequenceNode(teamHasBall, actionSupportMove), // Support when team has possession
+            new SequenceNode(opponentHasBall, new SelectorNode(
+                new SequenceNode(ballNearby, actionTackle),
+                actionReturnForm // Return to formation instead of pressing when opponent has ball
+            )),
+            actionReturnForm // Default: formation
         );
     }
 
@@ -110,7 +112,7 @@ public class PlayerAgent : MonoBehaviour
     }
 
     // Movement helpers
-    bool MoveTowards(Vector2 target,float AcceptDistance = 0.1f)
+    bool MoveTowards(Vector2 target, float AcceptDistance = 0.1f)
     {
         Vector2 pos = rb.position;
         Vector2 dir = target - pos;
@@ -154,7 +156,7 @@ public class PlayerAgent : MonoBehaviour
         foreach (var t in teammates)
         {
             if (t == this) continue;
-            float score = Vector2.Distance(t.transform.position,goalPos) * 1.4f + Vector2.Distance(transform.position, t.transform.position);
+            float score = Vector2.Distance(t.transform.position, goalPos) * 1.4f + Vector2.Distance(transform.position, t.transform.position);
             // Small heuristic: prefer closer teammates
             if (score < bestScore) { bestScore = score; best = t; }
         }
@@ -176,7 +178,7 @@ public class PlayerAgent : MonoBehaviour
             debugState = "Idle";
             return BTStatus.Success;
         };
-        
+
         debugState = "Dribble";
         return BTStatus.Running;
     }
@@ -196,6 +198,23 @@ public class PlayerAgent : MonoBehaviour
         debugState = "TackleAttempt";
         return BTStatus.Failure;
     }
+
+    BTStatus SupportMove()
+    {
+        Vector2 oppGoal = (team == Blackboard.Team.A) ? Blackboard.Instance.goalAPosition : Blackboard.Instance.goalBPosition;
+        Vector2 dir = (oppGoal - formationWorldPos).normalized;
+        float distToGoal = Vector2.Distance(formationWorldPos, oppGoal);
+        float pushDist = Mathf.Min(distToGoal * 0.7f, pressDistance);
+        Vector2 supportTarget = formationWorldPos + dir * pushDist;
+
+        if (MoveTowards(supportTarget))
+        {
+            return BTStatus.Success;
+        }
+        debugState = "Support";
+        return BTStatus.Running;
+    }
+
     BTStatus PressMove()
     {
         Vector2 ballPos = ball.transform.position;
