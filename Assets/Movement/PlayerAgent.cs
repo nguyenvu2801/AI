@@ -11,6 +11,9 @@ public class PlayerAgent : MonoBehaviour
     private float kickPower;
     private float ShootDistance;
     private float TackleChance;
+    private float tackleCooldownTimer = 0f;      // Counts down when stunned
+    private const float TackleStun = 1.2f;  // Adjust: longer = more punishment
+    private bool isTackleStunned => tackleCooldownTimer > 0f;
     [Header("Stats (from SO)")]
     public RoleStats roleStats;
     [Header("Formation")]
@@ -134,6 +137,17 @@ public class PlayerAgent : MonoBehaviour
 
         if (rb.velocity.magnitude > 0.01f)
             facing = rb.velocity.normalized;
+        if (tackleCooldownTimer > 0f)
+        {
+            tackleCooldownTimer -= Time.deltaTime;
+
+            // Optional: reduce speed while stunned
+            if (tackleCooldownTimer > 0f)
+                rb.velocity *= 0f;
+        }
+
+        if (rb.velocity.sqrMagnitude > 0.01f)
+            facing = rb.velocity.normalized;
     }
 
     // ==================== MOVEMENT & ACTIONS ====================
@@ -233,16 +247,38 @@ public class PlayerAgent : MonoBehaviour
 
     BTStatus TryTackle()
     {
-        if (ball.currentHolder != null && Vector2.Distance(transform.position, ball.transform.position) < 0.8f)
+        // If still recovering from last failed tackle can't try again
+        if (isTackleStunned)
         {
-            if (Random.value > 1 - TackleChance)
+            debugState = "Stunned!";
+            return BTStatus.Failure;
+        }
+
+        if (ball.currentHolder == null) return BTStatus.Failure;
+
+        float tackleRange = 0.9f;
+        if (Vector2.Distance(transform.position, ball.transform.position) < tackleRange)
+        {
+            if (Random.value < TackleChance) // Success
             {
                 ball.GiveTo(this);
-                debugState = "Tackle Won!";
+                debugState = "Tackle WON";
                 return BTStatus.Success;
             }
+            else // FAILED enter stun
+            {
+                tackleCooldownTimer =TackleStun;
+                debugState = "Tackle FAILED Stunned";
+
+                // Optional small push back to show commitment
+                Vector2 awayFromBall = (transform.position - ball.transform.position).normalized;
+                rb.velocity += awayFromBall * 2f;
+
+                return BTStatus.Failure;
+            }
         }
-        debugState = "Tackle Try";
+
+        debugState = "Moving to Tackle";
         return BTStatus.Failure;
     }
 
