@@ -11,6 +11,7 @@ public class PlayerAgent : MonoBehaviour
     private float kickPower;
     private float ShootDistance;
     private float TackleChance;
+    private float postTackleAttackTimer = 0f;
     private float tackleCooldownTimer = 0f;      // Counts down when stunned
     private const float TackleStun = 1.2f;  // Adjust: longer = more punishment
     private bool isTackleStunned => tackleCooldownTimer > 0f;
@@ -73,7 +74,7 @@ public class PlayerAgent : MonoBehaviour
 
         var isDefender = new ConditionNode(() => role == Role.Defender);
         var isNotDefender = new ConditionNode(() => role != Role.Defender); // <-- replaced Inverter
-
+        var recentlyWonTackle = new ConditionNode(() => postTackleAttackTimer > 0f);
         var opponentInPressRange = new ConditionNode(() =>
         {
             if (ball.currentHolder == null || ball.currentHolder.team == team) return false;
@@ -110,7 +111,7 @@ public class PlayerAgent : MonoBehaviour
                 actionPass,
                 actionDribble
             )),
-
+            new SequenceNode(recentlyWonTackle, new SelectorNode(actionPass, actionDribble, actionShoot)),
             // 2. Loose ball nearby
             new SequenceNode(ballLoose, ballNearby, actionChaseBall),
 
@@ -134,7 +135,6 @@ public class PlayerAgent : MonoBehaviour
                 // Default: stay in formation
                 actionReturnForm
             )),
-
             // Final fallback
             actionReturnForm
         );
@@ -142,7 +142,8 @@ public class PlayerAgent : MonoBehaviour
     void Update()
     {
         if (root != null) root.Tick();
-
+        if (postTackleAttackTimer > 0)
+            postTackleAttackTimer -= Time.deltaTime;
         if (rb.velocity.magnitude > 0.01f)
             facing = rb.velocity.normalized;
         if (tackleCooldownTimer > 0f)
@@ -270,6 +271,7 @@ public class PlayerAgent : MonoBehaviour
             if (Random.value < TackleChance) // Success
             {
                 ball.GiveTo(this);
+                postTackleAttackTimer = 1.0f;
                 debugState = "Tackle WON";
                 return BTStatus.Success;
             }
