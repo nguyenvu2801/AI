@@ -97,6 +97,8 @@ public class PlayerAgent : MonoBehaviour
         });
         var actionReturnForm = new ActionNode(() =>
         {
+            if (ball.currentHolder == this) // Got the ball while returning? Abort!
+                return BTStatus.Failure;
             if (MoveTowards(formationWorldPos))
                 return BTStatus.Success;
             debugState = "Return to Formation";
@@ -105,39 +107,37 @@ public class PlayerAgent : MonoBehaviour
 
         // ROOT TREE - NO InverterNode used
         root = new SelectorNode(
-            // 1. I have ball  attack
-            new SequenceNode(hasBall, new SelectorNode(
-                new SequenceNode(inShootingRange, actionShoot),
-                actionPass,
-                actionDribble
-            )),
-            new SequenceNode(recentlyWonTackle, new SelectorNode(actionPass, actionDribble, actionShoot)),
-            // 2. Loose ball nearby
-            new SequenceNode(ballLoose, ballNearby, actionChaseBall),
+        // This sequence will re-run every frame while you have the ball
+        new SequenceNode(hasBall, new SelectorNode(
+            new SequenceNode(inShootingRange, actionShoot),   // shoot if possible
+            new SequenceNode(isClosestToBall, actionPass),    // optional: prefer pass if teammate closer to goal
+            actionPass,                                       // normal pass
+            actionDribble                                     // default: keep dribbling forward
+        )),
 
-            // 3. Loose ball far but closest
-            new SequenceNode(ballLoose, isClosestToBall, actionChaseBall),
+        // Quick counter after winning tackle (you still have ball here too!)
+        new SequenceNode(recentlyWonTackle, new SelectorNode(
+            actionPass,
+            actionDribble,
+            actionShoot
+        )),
 
-            // 4. Teammate has ball  support
-            new SequenceNode(teamHasBall, actionSupport),
+        // ===== Everything else only runs when you DO NOT have the ball =====
+        new SequenceNode(ballLoose, ballNearby, actionChaseBall),
+        new SequenceNode(ballLoose, isClosestToBall, actionChaseBall),
+        new SequenceNode(teamHasBall, actionSupport),
 
-            // 5. OPPONENT HAS BALL - Defensive logic
-            new SequenceNode(opponentHasBall, new SelectorNode(
-                // Anyone close enough  tackle first (highest priority)
-                new SequenceNode(opponentInPressRange, actionTackle),
-
-                // Defender: press anytime the ball is in our defensive zone
-                new SequenceNode(isDefender, ballInOurDefensiveZone, actionPress),
-
-                // Non-defender: only press if opponent is inside my personal press range
-                new SequenceNode(isNotDefender, opponentInPressRange, actionPress),
-
-                // Default: stay in formation
-                actionReturnForm
-            )),
-            // Final fallback
+        // Defensive behaviours
+        new SequenceNode(opponentHasBall, new SelectorNode(
+            new SequenceNode(opponentInPressRange, actionTackle),
+            new SequenceNode(isDefender, ballInOurDefensiveZone, actionPress),
+            new SequenceNode(isNotDefender, opponentInPressRange, actionPress),
             actionReturnForm
-        );
+        )),
+
+        // Absolute final fallback
+        actionReturnForm
+    );
     }
     void Update()
     {
@@ -244,12 +244,11 @@ public class PlayerAgent : MonoBehaviour
     BTStatus DoDribble()
     {
         Vector2 goal = (team == Blackboard.Team.A) ? Blackboard.Instance.goalAPosition : Blackboard.Instance.goalBPosition;
-        if (MoveTowards(goal, ShootDistance))
-        {
-            debugState = "Dribble Done";
+
+        if (MoveTowards(goal + new Vector2(0, Random.Range(-2f, 2f)), 2f)) // small random Y to avoid perfect line
             return BTStatus.Success;
-        }
-        debugState = "Dribbling";
+
+        debugState = "Dribbling - Goal";
         return BTStatus.Running;
     }
 
