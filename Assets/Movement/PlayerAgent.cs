@@ -68,69 +68,77 @@ public class PlayerAgent : MonoBehaviour
         var ballInOurDefensiveZone = new ConditionNode(() =>
         {
             Vector2 ourGoal = team == Blackboard.Team.A ? Blackboard.Instance.goalBPosition : Blackboard.Instance.goalAPosition;
-            return Vector2.Distance(ball.transform.position, ourGoal) < 15f; 
+            return Vector2.Distance(ball.transform.position, ourGoal) < 15f;
         });
-        // ====== ACTIONS ======
-        var actionSupport = new ActionNode(() => SupportMove());
-        var actionShoot = new ActionNode(() => TryShoot());
-        var actionPass = new ActionNode(() => TryPass());
-        var actionDribble = new ActionNode(() => DoDribble());
-        var actionTackle = new ActionNode(() => TryTackle());
 
-        var actionMoveToBall = new ActionNode(() =>
+        var isDefender = new ConditionNode(() => role == Role.Defender);
+        var isNotDefender = new ConditionNode(() => role != Role.Defender); // <-- replaced Inverter
+
+        var opponentInPressRange = new ConditionNode(() =>
         {
-            if (ball.currentHolder == this || MoveTowards(ball.transform.position))
-            {
-                debugState = "Chasing Ball";
+            if (ball.currentHolder == null || ball.currentHolder.team == team) return false;
+            return Vector2.Distance(transform.position, ball.currentHolder.transform.position) <= pressDistance;
+        });
+
+        // ====== ACTIONS ======
+        var actionSupport = new ActionNode(SupportMove);
+        var actionShoot = new ActionNode(TryShoot);
+        var actionPass = new ActionNode(TryPass);
+        var actionDribble = new ActionNode(DoDribble);
+        var actionTackle = new ActionNode(TryTackle);
+        var actionPress = new ActionNode(PressBallCarrier);
+        var actionChaseBall = new ActionNode(() =>
+        {
+            if (MoveTowards(ball.transform.position, 0.5f))
                 return BTStatus.Success;
-            }
+            debugState = "Chasing Loose Ball";
             return BTStatus.Running;
         });
-
         var actionReturnForm = new ActionNode(() =>
         {
             if (MoveTowards(formationWorldPos))
-            {
-                debugState = "Formation";
                 return BTStatus.Success;
-            }
+            debugState = "Return to Formation";
             return BTStatus.Running;
         });
-        var actionChaseBall = new ActionNode(() =>
-        {
-            if (MoveTowards(ball.transform.position, 0.5f)) return BTStatus.Success;
-            debugState = "Chasing Ball";
-            return BTStatus.Running;
-        });
-        var actionPress = new ActionNode(() => PressBallCarrier()); // Aggressive press when triggered
 
+        // ROOT TREE - NO InverterNode used
         root = new SelectorNode(
-             // 1. I have ball attack
-             new SequenceNode(hasBall, new SelectorNode(
-                 new SequenceNode(inShootingRange, actionShoot),
-                 actionPass,
-                 actionDribble
-             )),
-             new SequenceNode(ballLoose, ballNearby, actionChaseBall),
+            // 1. I have ball  attack
+            new SequenceNode(hasBall, new SelectorNode(
+                new SequenceNode(inShootingRange, actionShoot),
+                actionPass,
+                actionDribble
+            )),
 
-             // 3. Loose ball far but I'm closest chase
-             new SequenceNode(ballLoose, isClosestToBall, actionChaseBall),
+            // 2. Loose ball nearby
+            new SequenceNode(ballLoose, ballNearby, actionChaseBall),
 
-             // 4. Teammate has ball  support
-             new SequenceNode(teamHasBall, actionSupport),
+            // 3. Loose ball far but closest
+            new SequenceNode(ballLoose, isClosestToBall, actionChaseBall),
 
-             // 5. OPPONENT HAS BALL Deep block  triggered press
-             new SequenceNode(opponentHasBall, new SelectorNode(
-                 new SequenceNode(ballNearby, actionTackle),                    // Tackle if close
-                 new SequenceNode(ballInOurDefensiveZone, actionPress),         // PRESS when danger
-                 actionReturnForm                                               // Otherwise hold shape
-             )),
+            // 4. Teammate has ball  support
+            new SequenceNode(teamHasBall, actionSupport),
 
-             // Default: go to formation
-             actionReturnForm
-         );
+            // 5. OPPONENT HAS BALL - Defensive logic
+            new SequenceNode(opponentHasBall, new SelectorNode(
+                // Anyone close enough  tackle first (highest priority)
+                new SequenceNode(opponentInPressRange, actionTackle),
+
+                // Defender: press anytime the ball is in our defensive zone
+                new SequenceNode(isDefender, ballInOurDefensiveZone, actionPress),
+
+                // Non-defender: only press if opponent is inside my personal press range
+                new SequenceNode(isNotDefender, opponentInPressRange, actionPress),
+
+                // Default: stay in formation
+                actionReturnForm
+            )),
+
+            // Final fallback
+            actionReturnForm
+        );
     }
-
     void Update()
     {
         if (root != null) root.Tick();
