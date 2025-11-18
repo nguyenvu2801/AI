@@ -17,4 +17,4 @@ MonoBehaviour:
   kickPower: 6
   shootDistance: 8
   tackleChance: 0.1
-  pressDistance: 7
+  pressDistance: 10
