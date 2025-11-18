@@ -177,19 +177,18 @@ public class PlayerAgent : MonoBehaviour
 
     BTStatus PressBallCarrier()
     {
-        if (ball.currentHolder == null) return BTStatus.Failure;
+        if (ball.currentHolder == null || ball.currentHolder.team == team)
+            return BTStatus.Failure;
 
-        Vector2 target = ball.currentHolder.transform.position;
-        float jockeyDistance = 1.4f;
+        // Go directly at the ball carrier - no jockeying, no stopping
+        float tackleApproachDistance = 1.1f; // slightly outside actual tackle range so we keep momentum
 
-        if (Vector2.Distance(transform.position, target) < jockeyDistance + 0.3f)
+        if (MoveTowards(ball.currentHolder.transform.position, tackleApproachDistance))
         {
-            rb.velocity = Vector2.Lerp(rb.velocity, Vector2.zero, Time.deltaTime * 12f);
-            debugState = "Jockeying";
-            return BTStatus.Success;
+            debugState = "Pressing Hard";
+            return BTStatus.Success; // we're basically on top of them
         }
 
-        MoveTowards(target, jockeyDistance);
         debugState = "Pressing!";
         return BTStatus.Running;
     }

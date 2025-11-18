@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Striker
   m_EditorClassIdentifier: 
   role: 0
-  maxSpeed: 4
+  maxSpeed: 1
   kickPower: 6
   shootDistance: 8
   tackleChance: 0.1
