@@ -123,11 +123,10 @@ public class PlayerAgent : MonoBehaviour
             actionDribble,
             actionShoot
         )),
-
+        new SequenceNode(teamHasBall, actionSupport),
         // ===== Everything else only runs when you DO NOT have the ball =====
         new SequenceNode(ballLoose, ballNearby, actionChaseBall),
         new SequenceNode(ballLoose, isClosestToBall, actionChaseBall),
-        new SequenceNode(teamHasBall, actionSupport),
 
         // Defensive behaviours
         new SequenceNode(opponentHasBall, new SelectorNode(
@@ -184,16 +183,8 @@ public class PlayerAgent : MonoBehaviour
         if (ball.currentHolder == null || ball.currentHolder.team == team)
             return BTStatus.Failure;
 
-        // Go directly at the ball carrier - no jockeying, no stopping
-        float tackleApproachDistance = 1.1f; // slightly outside actual tackle range so we keep momentum
-
-        if (MoveTowards(ball.currentHolder.transform.position, tackleApproachDistance))
-        {
-            debugState = "Pressing Hard";
-            return BTStatus.Success; // we're basically on top of them
-        }
-
-        debugState = "Pressing!";
+        MoveTowards(ball.currentHolder.transform.position, 1.2f);
+        debugState = "Pressing";
         return BTStatus.Running;
     }
 
@@ -289,40 +280,35 @@ public class PlayerAgent : MonoBehaviour
 
     BTStatus TryTackle()
     {
-        // If still recovering from last failed tackle can't try again
-        if (isTackleStunned)
-        {
-            debugState = "Stunned!";
-            return BTStatus.Failure;
-        }
+        if (isTackleStunned) return BTStatus.Failure;
 
         if (ball.currentHolder == null) return BTStatus.Failure;
 
         float tackleRange = 0.9f;
-        if (Vector2.Distance(transform.position, ball.transform.position) < tackleRange)
+        float dist = Vector2.Distance(transform.position, ball.transform.position);
+
+        if (dist < tackleRange)
         {
-            if (Random.value < TackleChance) // Success
+            // actual tackle attempt
+            if (Random.value < TackleChance)
             {
                 ball.GiveTo(this);
                 postTackleAttackTimer = 1.0f;
                 debugState = "Tackle WON";
                 return BTStatus.Success;
             }
-            else // FAILED enter stun
+            else
             {
-                tackleCooldownTimer =TackleStun;
-                debugState = "Tackle FAILED Stunned";
-
-                // Optional small push back to show commitment
-                Vector2 awayFromBall = (transform.position - ball.transform.position).normalized;
-                rb.velocity += awayFromBall * 2f;
-
+                tackleCooldownTimer = TackleStun;
+                debugState = "Tackle FAILED";
                 return BTStatus.Failure;
             }
         }
 
-        debugState = "Moving to Tackle";
-        return BTStatus.Failure;
+        // We are moving into range keep running this action!
+        MoveTowards(ball.currentHolder.transform.position, tackleRange + 0.1f);
+        debugState = "Closing in to Tackle";
+        return BTStatus.Running;  
     }
     #endregion
     #region Helper
