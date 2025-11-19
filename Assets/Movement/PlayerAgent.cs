@@ -4,6 +4,7 @@ using System.Collections.Generic;
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerAgent : MonoBehaviour
 {
+    #region Variable
     public Blackboard.Team team = Blackboard.Team.A;
     public Role role = Role.Midfielder;
     public Rigidbody2D rb;
@@ -11,6 +12,7 @@ public class PlayerAgent : MonoBehaviour
     private float kickPower;
     private float ShootDistance;
     private float TackleChance;
+    private float emergencyPassCooldown = 0f;
     private float postTackleAttackTimer = 0f;
     private float tackleCooldownTimer = 0f;      // Counts down when stunned
     private const float TackleStun = 1.2f;  // Adjust: longer = more punishment
@@ -26,7 +28,7 @@ public class PlayerAgent : MonoBehaviour
     private BTNode root;
     private BallController ball;
     public string debugState = "Idle";
-
+    #endregion
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -50,7 +52,7 @@ public class PlayerAgent : MonoBehaviour
             else if (team == Blackboard.Team.B) bb.teamBAgents.Add(this);
         }
     }
-
+    #region Tree
     void BuildBehaviorTree()
     {
         // ====== CONDITIONS ======
@@ -139,6 +141,7 @@ public class PlayerAgent : MonoBehaviour
         actionReturnForm
     );
     }
+    #endregion
     void Update()
     {
         if (root != null) root.Tick();
@@ -146,6 +149,8 @@ public class PlayerAgent : MonoBehaviour
             postTackleAttackTimer -= Time.deltaTime;
         if (rb.velocity.magnitude > 0.01f)
             facing = rb.velocity.normalized;
+        if (emergencyPassCooldown > 0f)
+            emergencyPassCooldown -= Time.deltaTime;
         if (tackleCooldownTimer > 0f)
         {
             tackleCooldownTimer -= Time.deltaTime;
@@ -159,8 +164,7 @@ public class PlayerAgent : MonoBehaviour
             facing = rb.velocity.normalized;
     }
 
-    // ==================== MOVEMENT & ACTIONS ====================
-
+    #region Movement and Action
     bool MoveTowards(Vector2 target, float acceptDistance = 0.1f)
     {
         Vector2 dir = target - rb.position;
@@ -243,9 +247,40 @@ public class PlayerAgent : MonoBehaviour
 
     BTStatus DoDribble()
     {
-        Vector2 goal = (team == Blackboard.Team.A) ? Blackboard.Instance.goalAPosition : Blackboard.Instance.goalBPosition;
+        if (emergencyPassCooldown <= 0f)
+        {
+            int opponentsClose = CountOpponentsNearby(4f);
+            int dangerThreshold = 2;
 
-        if (MoveTowards(goal + new Vector2(0, Random.Range(-2f, 2f)), 2f)) // small random Y to avoid perfect line
+            if (opponentsClose >= dangerThreshold)
+            {
+                PlayerAgent nearest = GetNearestTeammate();
+
+                // Also avoid passing if teammate is also surrounded 
+                if (nearest != null && CountPlayer(nearest, 4f) <= dangerThreshold)
+                {
+                    // Emergency pass
+                    ball.ReleaseWithForce(
+                        (nearest.transform.position - transform.position).normalized,
+                        kickPower * 1.8f
+                    );
+
+                    debugState = "Emergency Pass";
+
+                    // Prevent chain-pass loop
+                    emergencyPassCooldown = 1.0f;
+
+                    return BTStatus.Success;
+                }
+            }
+        }
+
+        // --- Normal dribble ---
+        Vector2 goal = (team == Blackboard.Team.A)
+            ? Blackboard.Instance.goalAPosition
+            : Blackboard.Instance.goalBPosition;
+
+        if (MoveTowards(goal + new Vector2(0, Random.Range(-2f, 2f)), 2f))
             return BTStatus.Success;
 
         debugState = "Dribbling - Goal";
@@ -289,14 +324,67 @@ public class PlayerAgent : MonoBehaviour
         debugState = "Moving to Tackle";
         return BTStatus.Failure;
     }
-
+    #endregion
+    #region Helper
     void OnTriggerEnter2D(Collider2D col)
     {
         var ballCtrl = col.GetComponent<BallController>();
         if (ballCtrl != null && ballCtrl.currentHolder == null)
             ballCtrl.GiveTo(this);
     }
+    int CountOpponentsNearby(float radius)
+    {
+        var opponents = (team == Blackboard.Team.A) ?
+            Blackboard.Instance.teamBAgents :
+            Blackboard.Instance.teamAAgents;
 
+        int count = 0;
+        foreach (var opp in opponents)
+        {
+            if (opp == this) continue;
+            if (Vector2.Distance(transform.position, opp.transform.position) <= radius)
+                count++;
+        }
+        return count;
+    }
+    int CountPlayer(PlayerAgent player, float radius)
+    {
+        var opponents = (player.team == Blackboard.Team.A)
+            ? Blackboard.Instance.teamBAgents
+            : Blackboard.Instance.teamAAgents;
+
+        int count = 0;
+        foreach (var opp in opponents)
+        {
+            if (opp == player) continue;
+            if (Vector2.Distance(player.transform.position, opp.transform.position) <= radius)
+                count++;
+        }
+        return count;
+    }
+    // Find the nearest teammate (for emergency pass)
+    PlayerAgent GetNearestTeammate()
+    {
+        var mates = (team == Blackboard.Team.A) ?
+            Blackboard.Instance.teamAAgents :
+            Blackboard.Instance.teamBAgents;
+
+        PlayerAgent closest = null;
+        float bestDist = float.MaxValue;
+
+        foreach (var t in mates)
+        {
+            if (t == this) continue;
+
+            float d = Vector2.Distance(transform.position, t.transform.position);
+            if (d < bestDist)
+            {
+                bestDist = d;
+                closest = t;
+            }
+        }
+        return closest;
+    }
     void ApplyRoleStats()
     {
         if (roleStats != null)
@@ -320,4 +408,5 @@ public class PlayerAgent : MonoBehaviour
         UnityEditor.Handles.color = Color.white;
         UnityEditor.Handles.Label(transform.position + Vector3.up * 0.5f, debugState);
     }
+    #endregion
 }
