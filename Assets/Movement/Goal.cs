@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class Goal : MonoBehaviour
 {
-    public Blackboard.Team scoringTeam; // which team gets the point when the OTHER team shoots into this goal
+    public Blackboard.Team scoringTeam; 
     void OnTriggerEnter2D(Collider2D col)
     {
         var ball = col.GetComponent<BallController>();

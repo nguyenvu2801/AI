@@ -1,4 +1,3 @@
-// Assets/Scripts/Gameplay/MatchManager.cs
 using UnityEngine;
 
 public class MatchManager : MonoBehaviour
@@ -7,7 +6,7 @@ public class MatchManager : MonoBehaviour
     public BallController ball;
     public Blackboard bb;
     public TeamTactic tacticA, tacticB;
-    public float matchDuration = 90f; // seconds
+    public float matchDuration = 90f; 
 
     void Start()
     {
@@ -45,7 +44,6 @@ public class MatchManager : MonoBehaviour
     void EndMatch()
     {
         Debug.Log("Match ended");
-        // Stop AI maybe via a simple flag (not implemented here)
         enabled = false;
     }
 }

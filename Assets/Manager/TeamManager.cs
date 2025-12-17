@@ -14,7 +14,7 @@ public class TeamManager : MonoBehaviour
     private Dictionary<Role, RoleStats> roleStatsMap = new Dictionary<Role, RoleStats>();
     void Awake()
     {
-        // Load all RoleStats from Resources/RoleStats folder (adjust path if different)
+        // Load all RoleStats 
         RoleStats[] allStats = Resources.LoadAll<RoleStats>("RoleStats");
         foreach (var stats in allStats)
         {

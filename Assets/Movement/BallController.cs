@@ -11,21 +11,21 @@ public class BallController : MonoBehaviour
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        rb.gravityScale = 0f; // Fix: Disable gravity
-        rb.drag = 0.5f; // Fix: Add drag for natural slowdown
+        rb.gravityScale = 0f; 
+        rb.drag = 0.5f; 
     }
 
     void Update()
     {
         if (currentHolder != null)
         {
-            // Ball follows holder (small offset)
+            // Ball follows holder 
             rb.position = currentHolder.transform.position + (Vector3)(currentHolder.facing * 0.35f);
             rb.velocity = Vector2.zero;
         }
         else
         {
-            // Rolling physics (drag handles slowdown)
+            // Rolling physics 
         }
         if (Blackboard.Instance != null) Blackboard.Instance.ballPosition = rb.position;
     }

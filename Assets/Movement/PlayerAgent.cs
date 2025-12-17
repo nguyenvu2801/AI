@@ -14,14 +14,14 @@ public class PlayerAgent : MonoBehaviour
     private float TackleChance;
     private float emergencyPassCooldown = 0f;
     private float postTackleAttackTimer = 0f;
-    private float tackleCooldownTimer = 0f;      // Counts down when stunned
-    private const float TackleStun = 1.2f;  // Adjust: longer = more punishment
+    private float tackleCooldownTimer = 0f;      
+    private const float TackleStun = 1.2f;  
     private bool isTackleStunned => tackleCooldownTimer > 0f;
     [Header("Stats (from SO)")]
     public RoleStats roleStats;
     [Header("Formation")]
-    public Vector2 formationWorldPos; // World position of formation slot
-    private float pressDistance; // relative to team center
+    public Vector2 formationWorldPos; 
+    private float pressDistance; 
     [HideInInspector] public Vector2 facing = Vector2.right;
 
     // BT
@@ -55,7 +55,7 @@ public class PlayerAgent : MonoBehaviour
     #region Tree
     void BuildBehaviorTree()
     {
-        // ====== CONDITIONS ======
+        #region condition
         var hasBall = new ConditionNode(() => ball.currentHolder == this);
         var ballNearby = new ConditionNode(() => Vector2.Distance(transform.position, ball.transform.position) < 3f);
         var inShootingRange = new ConditionNode(() =>
@@ -82,8 +82,9 @@ public class PlayerAgent : MonoBehaviour
             if (ball.currentHolder == null || ball.currentHolder.team == team) return false;
             return Vector2.Distance(transform.position, ball.currentHolder.transform.position) <= pressDistance;
         });
-
-        // ====== ACTIONS ======
+        #endregion
+        #region Action
+        // ====== ACTIONS =====
         var actionSupport = new ActionNode(SupportMove);
         var actionShoot = new ActionNode(TryShoot);
         var actionPass = new ActionNode(TryPass);
@@ -106,15 +107,16 @@ public class PlayerAgent : MonoBehaviour
             debugState = "Return to Formation";
             return BTStatus.Running;
         });
-
+        #endregion
+        #region Tree
         // ROOT TREE - NO InverterNode used
         root = new SelectorNode(
         // This sequence will re-run every frame while you have the ball
         new SequenceNode(hasBall, new SelectorNode(
             new SequenceNode(inShootingRange, actionShoot),   // shoot if possible
-            new SequenceNode(isClosestToBall, actionPass),    // optional: prefer pass if teammate closer to goal
-            actionPass,                                       // normal pass
-            actionDribble                                     // default: keep dribbling forward
+            new SequenceNode(isClosestToBall, actionPass),  
+            actionPass,                                       
+            actionDribble                                    // default: keep dribbling forward
         )),
 
         // Quick counter after winning tackle (you still have ball here too!)
@@ -138,6 +140,7 @@ public class PlayerAgent : MonoBehaviour
 
         // Absolute final fallback
         actionReturnForm
+        #endregion
     );
     }
     #endregion
@@ -266,7 +269,6 @@ public class PlayerAgent : MonoBehaviour
             }
         }
 
-        // --- Normal dribble ---
         Vector2 goal = (team == Blackboard.Team.A)
             ? Blackboard.Instance.goalAPosition
             : Blackboard.Instance.goalBPosition;
@@ -304,8 +306,6 @@ public class PlayerAgent : MonoBehaviour
                 return BTStatus.Failure;
             }
         }
-
-        // We are moving into range keep running this action!
         MoveTowards(ball.currentHolder.transform.position, tackleRange + 0.1f);
         debugState = "Closing in to Tackle";
         return BTStatus.Running;  

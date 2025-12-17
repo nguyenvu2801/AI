@@ -1,6 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+/// <summary>
+/// Shared blackboard for AI agents.
+/// Stores global match state and common queries.
+/// </summary>
 public class Blackboard : MonoBehaviour
 {
     public static Blackboard Instance { get; private set; }
