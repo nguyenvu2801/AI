@@ -10,7 +10,7 @@ public class Formation : ScriptableObject
     public string description = "Standard attacking formation.";
 
     [Header("Relative Positions (from teamCenter, for Team A)")]
-    public Vector2[] positions = new Vector2[11]; // Edit these in Inspector! See examples below
+    public Vector2[] positions = new Vector2[11]; 
 
     [Header("Roles")]
     public Role[] roles = new Role[11];
