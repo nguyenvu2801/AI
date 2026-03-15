@@ -15,7 +15,11 @@ public class PlayerAgent : MonoBehaviour
     private float emergencyPassCooldown = 0f;
     private float postTackleAttackTimer = 0f;
     private float tackleCooldownTimer = 0f;      
-    private const float TackleStun = 1.2f;  
+    private const float TackleStun = 1.2f;
+    [Header("Natural Movement")]
+    [Range(0f, 0.4f)] public float wobbleAmount = 0.18f;      
+    [Range(1f, 15f)] public float wobbleFrequency = 7.5f;  
+    private float wobblePhase = 0f;
     private bool isTackleStunned => tackleCooldownTimer > 0f;
     [Header("Stats (from SO)")]
     public RoleStats roleStats;
@@ -176,8 +180,18 @@ public class PlayerAgent : MonoBehaviour
             rb.velocity = Vector2.zero;
             return true;
         }
+
         dir.Normalize();
-        rb.velocity = Vector2.Lerp(rb.velocity, dir * maxSpeed, Time.deltaTime * 5f);
+        wobblePhase += Time.deltaTime * wobbleFrequency;
+        float wobble = Mathf.Sin(wobblePhase) * wobbleAmount;
+
+        Vector2 perp = new Vector2(-dir.y, dir.x);
+        Vector2 wobbledDir = (dir + perp * wobble).normalized;
+
+        float speedVariation = 1f + Mathf.Sin(wobblePhase * 0.7f) * 0.07f;
+
+        rb.velocity = Vector2.Lerp(rb.velocity, wobbledDir * maxSpeed * speedVariation, Time.deltaTime * 5f);
+
         return false;
     }
 
