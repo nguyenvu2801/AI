@@ -518,7 +518,7 @@ MonoBehaviour:
   team: 0
   playerPrefab: {fileID: 8786130168909658997, guid: 6ad1fc4473bae8e4b8f57d7643d5372b, type: 3}
   teamParent: {fileID: 222850972}
-  currentTactic: {fileID: 0}
+  currentTactic: {fileID: 11400000, guid: c1eec63d3802df448ab26c69b61a971e, type: 2}
   teamCenter: {x: 0, y: 0}
 --- !u!1 &310122673
 GameObject:
@@ -1699,6 +1699,7 @@ MonoBehaviour:
   tacticA: {fileID: 11400000, guid: 39a95b58a4926164cbe1980def03ca9c, type: 2}
   tacticB: {fileID: 11400000, guid: 39a95b58a4926164cbe1980def03ca9c, type: 2}
   matchDuration: 90
+  resetDelay: 1.2
 --- !u!1 &973585453
 GameObject:
   m_ObjectHideFlags: 0
@@ -2885,7 +2886,7 @@ MonoBehaviour:
   team: 1
   playerPrefab: {fileID: 8403134981139032220, guid: 1cb0a43d58e78124c87a144b8414a19d, type: 3}
   teamParent: {fileID: 1281748337}
-  currentTactic: {fileID: 0}
+  currentTactic: {fileID: 11400000, guid: 39a95b58a4926164cbe1980def03ca9c, type: 2}
   teamCenter: {x: 0, y: 0}
 --- !u!1 &1403327509
 GameObject:

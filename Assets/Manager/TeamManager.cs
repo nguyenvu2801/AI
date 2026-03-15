@@ -28,6 +28,21 @@ public class TeamManager : MonoBehaviour
             }
         }
     }
+    public void RegisterPlayersToBlackboard()
+    {
+        var agents = GetPlayers(); // your current list
+
+        if (team == Blackboard.Team.A)
+        {
+            Blackboard.Instance.teamAAgents.Clear();
+            Blackboard.Instance.teamAAgents.AddRange(agents);
+        }
+        else if (team == Blackboard.Team.B)
+        {
+            Blackboard.Instance.teamBAgents.Clear();
+            Blackboard.Instance.teamBAgents.AddRange(agents);
+        }
+    }
     public void SetupTeam(TeamTactic tactic, Vector2 center, Blackboard.Team t)
     {
         currentTactic = tactic;
@@ -36,7 +51,7 @@ public class TeamManager : MonoBehaviour
         SpawnFormation();
     }
 
-    void SpawnFormation()
+    public void SpawnFormation()
     {
         if (currentTactic?.formation == null)
         {
@@ -84,7 +99,7 @@ public class TeamManager : MonoBehaviour
             agent.roleStats = roleStatsMap.ContainsKey(agent.role) ? roleStatsMap[agent.role] : null;
             players.Add(agent);
         }
-
+        RegisterPlayersToBlackboard();
         Debug.Log($"Spawned {playerCount} players in {formationData.formationName} for {team}");
     }
 

@@ -15,6 +15,6 @@ MonoBehaviour:
   role: 0
   maxSpeed: 2
   kickPower: 6
-  shootDistance: 8
+  shootDistance: 3
   tackleChance: 0.1
   pressDistance: 10

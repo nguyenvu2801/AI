@@ -67,7 +67,7 @@ public class PlayerAgent : MonoBehaviour
         var inShootingRange = new ConditionNode(() =>
         {
             Vector2 goal = (team == Blackboard.Team.A) ? Blackboard.Instance.goalAPosition : Blackboard.Instance.goalBPosition;
-            return Vector2.Distance(transform.position, goal) < 12f;
+            return Vector2.Distance(transform.position, goal) < ShootDistance;
         });
         var ballLoose = new ConditionNode(() => ball.currentHolder == null);
         var opponentHasBall = new ConditionNode(() => ball.currentHolder != null && ball.currentHolder.team != team);
@@ -117,14 +117,12 @@ public class PlayerAgent : MonoBehaviour
         #region Tree
         // ROOT TREE - NO InverterNode used
         root = new SelectorNode(
-        // This sequence will re-run every frame while you have the ball
-        new SequenceNode(hasBall, new SelectorNode(
-            new SequenceNode(inShootingRange, actionShoot),   // shoot if possible
-            new SequenceNode(isClosestToBall, actionPass),  
-            actionPass,                                       
-            actionDribble                                    // default: keep dribbling forward
-        )),
-
+    new SequenceNode(hasBall,
+    new SelectorNode(
+        new SequenceNode(inShootingRange, actionShoot),
+        new SequenceNode(actionPass),
+        actionDribble
+)),
         // Quick counter after winning tackle (you still have ball here too!)
         new SequenceNode(recentlyWonTackle, new SelectorNode(
             actionPass,
@@ -234,25 +232,79 @@ public class PlayerAgent : MonoBehaviour
 
     BTStatus TryPass()
     {
-        Vector2 goalPos = (team == Blackboard.Team.A) ? Blackboard.Instance.goalAPosition : Blackboard.Instance.goalBPosition;
-        var teammates = (team == Blackboard.Team.A) ? Blackboard.Instance.teamAAgents : Blackboard.Instance.teamBAgents;
-        PlayerAgent best = null;
-        float bestScore = Vector2.Distance(transform.position, goalPos) * 1.4f;
+        Vector3 goalPos = (team == Blackboard.Team.A)
+            ? Blackboard.Instance.goalAPosition
+            : Blackboard.Instance.goalBPosition;
 
-        foreach (var t in teammates)
+        var teammates = (team == Blackboard.Team.A)
+            ? Blackboard.Instance.teamAAgents
+            : Blackboard.Instance.teamBAgents;
+
+        PlayerAgent bestTeammate = null;
+        float bestScore = float.MaxValue;
+
+        foreach (var teammate in teammates)
         {
-            if (t == this) continue;
-            float score = Vector2.Distance(t.transform.position, goalPos) * 1.4f + Vector2.Distance(transform.position, t.transform.position);
-            if (score < bestScore) { bestScore = score; best = t; }
+            if (teammate == this || teammate == null)
+                continue;
+
+            float distToGoalTeammate = Vector2.Distance(teammate.transform.position, goalPos);
+            float passDistance = Vector2.Distance(transform.position, teammate.transform.position);
+
+            float score =
+                distToGoalTeammate * 2.5f +
+                passDistance * 0.6f +
+                (teammate.CountOpponentsNearby(5f) * 4f);
+
+            if (score < bestScore)
+            {
+                bestScore = score;
+                bestTeammate = teammate;
+            }
         }
 
-        if (best != null)
+        if (bestTeammate == null)
         {
-            ball.ReleaseWithForce((best.transform.position - transform.position).normalized, kickPower * 1.9f);
-            debugState = "Pass";
-            return BTStatus.Success;
+            return BTStatus.Failure;
         }
-        return BTStatus.Failure;
+
+        float distToGoalMe = Vector2.Distance(transform.position, goalPos);
+        float distToGoalBest = Vector2.Distance(bestTeammate.transform.position, goalPos);
+        if (distToGoalMe < 4f)
+        {
+            return BTStatus.Failure; // Prefer shooting instead of passing
+        }
+
+        if (distToGoalMe < distToGoalBest - 4f)
+        {
+            return BTStatus.Failure;
+        }
+        if (distToGoalMe < distToGoalBest - 4f)
+        {
+            return BTStatus.Failure;
+        }
+
+        Vector2 passDirection = (bestTeammate.transform.position - transform.position).normalized;
+        Vector2 goalDirection = (goalPos - transform.position).normalized;
+
+        float forwardDot = Vector2.Dot(passDirection, goalDirection);
+
+        if (forwardDot < 0.35f)
+        {
+            return BTStatus.Failure;
+        }
+
+        if (bestTeammate.CountOpponentsNearby(3.5f) >= 3)
+        {
+            return BTStatus.Failure;
+        }
+
+        float passPower = kickPower * 1.7f;
+
+        ball.ReleaseWithForce(passDirection, passPower);
+
+        debugState = "Pass";
+        return BTStatus.Success;
     }
 
     BTStatus DoDribble()
