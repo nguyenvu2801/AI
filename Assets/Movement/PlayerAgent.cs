@@ -16,6 +16,7 @@ public class PlayerAgent : MonoBehaviour
     private float postTackleAttackTimer = 0f;
     private float tackleCooldownTimer = 0f;      
     private const float TackleStun = 1.2f;
+    private Vector2 dribbleWobbleOffset = Vector2.zero;
     [Header("Natural Movement")]
     [Range(0f, 0.4f)] public float wobbleAmount = 0.18f;      
     [Range(1f, 15f)] public float wobbleFrequency = 7.5f;  
@@ -45,6 +46,7 @@ public class PlayerAgent : MonoBehaviour
         ball = FindObjectOfType<BallController>();
         RegisterToBlackboard();
         BuildBehaviorTree();
+        wobblePhase = Random.Range(0f, 10f);
     }
 
     void RegisterToBlackboard()
@@ -282,12 +284,14 @@ public class PlayerAgent : MonoBehaviour
                 }
             }
         }
-
+        if (Time.time % 0.35f < Time.deltaTime) 
+            dribbleWobbleOffset = new Vector2(0, Random.Range(-2.5f, 2.5f));
         Vector2 goal = (team == Blackboard.Team.A)
             ? Blackboard.Instance.goalAPosition
             : Blackboard.Instance.goalBPosition;
 
-        if (MoveTowards(goal + new Vector2(0, Random.Range(-2f, 2f)), 2f))
+        Vector2 finalTarget = goal + dribbleWobbleOffset;
+        if (MoveTowards(finalTarget, 2f))
             return BTStatus.Success;
 
         debugState = "Dribbling - Goal";
