@@ -97,6 +97,7 @@ public class TeamManager : MonoBehaviour
             agent.formationWorldPos = new Vector2(relPos.x, relPos.y);
             agent.role = formationData.roles[i];
             agent.roleStats = roleStatsMap.ContainsKey(agent.role) ? roleStatsMap[agent.role] : null;
+            agent.ApplyRoleStats(currentTactic);
             players.Add(agent);
         }
         RegisterPlayersToBlackboard();
@@ -104,27 +105,21 @@ public class TeamManager : MonoBehaviour
     }
     public void ChangeTactic(TeamTactic newTactic)
     {
-        if (newTactic == null)
+        if (newTactic == null || newTactic.formation == null)
         {
-            Debug.LogError($"[{team}] ChangeTactic received null tactic!");
+            Debug.LogError($"[{team}] Invalid tactic or formation!");
             return;
         }
 
-        if (newTactic.formation == null)
-        {
-            Debug.LogError($"[{team}] Tactic '{newTactic.name}' has no Formation assigned in the Inspector!");
-            return;
-        }
-
-        if (currentTactic == newTactic)
-            return;
+        if (currentTactic == newTactic) return;
 
         currentTactic = newTactic;
 
-        Debug.Log($"Team {team} changed to tactic: {newTactic.name} ({newTactic.formation.formationName})");
+        Debug.Log($"Team {team} changed to: {newTactic.name} (Speed x{newTactic.speedMultiplier}, Kick x{newTactic.kickPowerMultiplier})");
 
         SpawnFormation();
 
+        // Update Blackboard
         if (team == Blackboard.Team.A)
             Blackboard.Instance.teamATactic = currentTactic;
         else

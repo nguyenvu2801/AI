@@ -352,17 +352,41 @@ public class PlayerAgent : MonoBehaviour
 
     BTStatus TryTackle()
     {
-        if (isTackleStunned) return BTStatus.Failure;
+        if (isTackleStunned)
+            return BTStatus.Failure;
 
-        if (ball.currentHolder == null) return BTStatus.Failure;
+        if (ball.currentHolder == null)
+            return BTStatus.Failure;
 
-        float tackleRange = 0.9f;
-        float dist = Vector2.Distance(transform.position, ball.transform.position);
+        float tackleRange = 1.1f;           // Slightly bigger feel
+        float dist = Vector2.Distance(transform.position, ball.currentHolder.transform.position);
 
-        if (dist < tackleRange)
+        // Only attempt tackle when close enough
+        if (dist > tackleRange + 0.3f)
         {
-            // actual tackle attempt
-            if (Random.value < TackleChance)
+            MoveTowards(ball.currentHolder.transform.position, tackleRange);
+            debugState = "Closing in to Tackle";
+            return BTStatus.Running;
+        }
+
+        // === TACKLE ATTEMPT ===
+        if (dist <= tackleRange)
+        {
+            // Make it harder to tackle successfully
+            float finalTackleChance = TackleChance;
+
+            // Reduce chance if attacker is moving fast (dribbling)
+            if (ball.currentHolder.rb.velocity.magnitude > 3f)
+                finalTackleChance *= 0.65f;
+
+            // Defender bonus if standing still or moving slowly
+            if (rb.velocity.magnitude < 2f)
+                finalTackleChance *= 1.2f;
+
+            // Cap it realistically
+            finalTackleChance = Mathf.Clamp(finalTackleChance, 0.25f, 0.85f);
+
+            if (Random.value < finalTackleChance)
             {
                 ball.GiveTo(this);
                 postTackleAttackTimer = 1.0f;
@@ -372,13 +396,12 @@ public class PlayerAgent : MonoBehaviour
             else
             {
                 tackleCooldownTimer = TackleStun;
-                debugState = "Tackle FAILED";
+                debugState = "Tackle FAILED - Stunned";
                 return BTStatus.Failure;
             }
         }
-        MoveTowards(ball.currentHolder.transform.position, tackleRange + 0.1f);
-        debugState = "Closing in to Tackle";
-        return BTStatus.Running;  
+
+        return BTStatus.Running;
     }
     #endregion
     #region Helper
@@ -441,20 +464,38 @@ public class PlayerAgent : MonoBehaviour
         }
         return closest;
     }
-    void ApplyRoleStats()
+    public void ApplyRoleStats(TeamTactic currentTactic = null)
     {
-        if (roleStats != null)
+        if (roleStats == null)
         {
-            maxSpeed = roleStats.maxSpeed;
-            kickPower = roleStats.kickPower;
-            ShootDistance = roleStats.shootDistance;
-            TackleChance = roleStats.tackleChance;
-            pressDistance = roleStats.pressDistance;
+            Debug.LogWarning($"{name} has no RoleStats assigned for role {role}!");
+            return;
         }
-        else
+
+        float speedMult = 1f;
+        float kickMult = 1f;
+        float shootMult = 1f;
+        float tackleMult = 1f;
+        float pressMult = 1f;
+
+        if (currentTactic != null)
         {
-            Debug.LogWarning($"{name} has no RoleStats assigned!");
+            speedMult = currentTactic.speedMultiplier;
+            kickMult = currentTactic.kickPowerMultiplier;
+            shootMult = currentTactic.shootDistanceMultiplier;
+            tackleMult = currentTactic.tackleChanceMultiplier;
+            pressMult = currentTactic.pressDistanceMultiplier;
         }
+
+        // Apply base stats + tactic multipliers
+        maxSpeed = roleStats.maxSpeed * speedMult;
+        kickPower = roleStats.kickPower * kickMult;
+        ShootDistance = roleStats.shootDistance * shootMult;
+        TackleChance = roleStats.tackleChance * tackleMult;
+        pressDistance = roleStats.pressDistance * pressMult;
+
+        Debug.Log($"{name} ({role}) - Tactic applied | Speed: {maxSpeed:F1} (x{speedMult:F2}), " +
+                  $"Kick: {kickPower:F1} (x{kickMult:F2}), ShootDist: {ShootDistance:F1}");
     }
 
     void OnDrawGizmos()

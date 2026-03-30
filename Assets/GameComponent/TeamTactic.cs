@@ -11,6 +11,11 @@ public class TeamTactic : ScriptableObject
     public static TeamTactic Aggressive => CreateInstance<TeamTactic>().Init("Aggressive", 0.25f);
     public static TeamTactic Defensive => CreateInstance<TeamTactic>().Init("Defensive", -0.25f);
     public static TeamTactic Balanced => CreateInstance<TeamTactic>().Init("Balanced", 0f);
-
+    [Header("Stat Multipliers")]
+    [Range(0.5f, 1.5f)] public float speedMultiplier = 1.0f;
+    [Range(0.5f, 1.5f)] public float kickPowerMultiplier = 1.0f;
+    [Range(0.5f, 1.5f)] public float shootDistanceMultiplier = 1.0f;
+    [Range(0.5f, 1.5f)] public float tackleChanceMultiplier = 1.0f;
+    [Range(0.5f, 1.5f)] public float pressDistanceMultiplier = 1.0f;
     TeamTactic Init(string name, float bias) { tacticName = name; attackBias = bias; return this; }
 }
