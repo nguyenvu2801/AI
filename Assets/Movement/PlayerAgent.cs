@@ -117,11 +117,10 @@ public class PlayerAgent : MonoBehaviour
         #region Tree
         // ROOT TREE - NO InverterNode used
         root = new SelectorNode(
-    new SequenceNode(hasBall,
-    new SelectorNode(
-        new SequenceNode(inShootingRange, actionShoot),
-        new SequenceNode(actionPass),
-        actionDribble
+    new SequenceNode(hasBall, new SelectorNode(
+    new SequenceNode(inShootingRange, actionShoot),
+    actionPass,
+    actionDribble
 )),
         // Quick counter after winning tackle (you still have ball here too!)
         new SequenceNode(recentlyWonTackle, new SelectorNode(
