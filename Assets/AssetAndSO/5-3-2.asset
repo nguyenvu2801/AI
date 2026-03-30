@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8ea8a2f724219cd4f8b28e025bdd1b62, type: 3}
-  m_Name: 4-4-2
+  m_Name: 5-3-2
   m_EditorClassIdentifier: 
-  formationName: 4-4-2
+  formationName: 5-3-2
   description: Standard attacking formation.
   positions:
   - {x: -19, y: 0}
@@ -20,10 +20,10 @@ MonoBehaviour:
   - {x: -15, y: 2}
   - {x: -15, y: -3}
   - {x: -15, y: -8}
+  - {x: -15, y: -13}
   - {x: -9.7, y: 5}
   - {x: -9.7, y: 0}
   - {x: -9.7, y: -5}
-  - {x: -9.7, y: -7.5}
   - {x: -3, y: -2.5}
   - {x: -3, y: 2.5}
-  roles: 0400000003000000030000000300000003000000020000000200000002000000020000000000000000000000
+  roles: 0400000003000000030000000300000003000000030000000200000002000000020000000000000000000000

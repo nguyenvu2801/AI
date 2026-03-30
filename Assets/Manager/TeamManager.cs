@@ -102,6 +102,33 @@ public class TeamManager : MonoBehaviour
         RegisterPlayersToBlackboard();
         Debug.Log($"Spawned {playerCount} players in {formationData.formationName} for {team}");
     }
+    public void ChangeTactic(TeamTactic newTactic)
+    {
+        if (newTactic == null)
+        {
+            Debug.LogError($"[{team}] ChangeTactic received null tactic!");
+            return;
+        }
 
+        if (newTactic.formation == null)
+        {
+            Debug.LogError($"[{team}] Tactic '{newTactic.name}' has no Formation assigned in the Inspector!");
+            return;
+        }
+
+        if (currentTactic == newTactic)
+            return;
+
+        currentTactic = newTactic;
+
+        Debug.Log($"Team {team} changed to tactic: {newTactic.name} ({newTactic.formation.formationName})");
+
+        SpawnFormation();
+
+        if (team == Blackboard.Team.A)
+            Blackboard.Instance.teamATactic = currentTactic;
+        else
+            Blackboard.Instance.teamBTactic = currentTactic;
+    }
     public List<PlayerAgent> GetPlayers() { return players; }
 }
