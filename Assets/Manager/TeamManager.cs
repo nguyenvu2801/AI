@@ -30,18 +30,11 @@ public class TeamManager : MonoBehaviour
     }
     public void RegisterPlayersToBlackboard()
     {
-        var agents = GetPlayers(); // your current list
-
-        if (team == Blackboard.Team.A)
-        {
-            Blackboard.Instance.teamAAgents.Clear();
-            Blackboard.Instance.teamAAgents.AddRange(agents);
-        }
-        else if (team == Blackboard.Team.B)
-        {
-            Blackboard.Instance.teamBAgents.Clear();
-            Blackboard.Instance.teamBAgents.AddRange(agents);
-        }
+        var list = team == Blackboard.Team.A
+            ? Blackboard.Instance.teamAAgents
+            : Blackboard.Instance.teamBAgents;
+        list.Clear();
+        foreach (var p in players) list.Add(p);  // PlayerAgent implements IFootballAgent
     }
     public void SetupTeam(TeamTactic tactic, Vector2 center, Blackboard.Team t)
     {

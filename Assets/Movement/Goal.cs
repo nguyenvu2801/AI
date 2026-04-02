@@ -2,37 +2,17 @@ using UnityEngine;
 
 public class Goal : MonoBehaviour
 {
-    public Blackboard.Team scoringTeam;     // Team that SCORES when ball enters this goal
+    public Blackboard.Team scoringTeam;
 
     void OnTriggerEnter2D(Collider2D col)
     {
-        var ball = col.GetComponent<BallController>();
-        if (ball == null) return;
+        if (col.GetComponent<BallController>() == null) return;
 
-        // Update score
-        if (scoringTeam == Blackboard.Team.A)
-            Blackboard.Instance.scoreA++;
-        else
-            Blackboard.Instance.scoreB++;
+        Blackboard.Instance.scoreA += scoringTeam == Blackboard.Team.A ? 1 : 0;
+        Blackboard.Instance.scoreB += scoringTeam == Blackboard.Team.B ? 1 : 0;
 
-        // Option A: Most common – notify MatchManager to handle full reset
-        var match = FindObjectOfType<MatchManager>();
-        if (match != null)
-        {
-            match.ResetAfterGoal(scoringTeam);
-        }
-        else
-        {
-            // Fallback – at least reset ball if MatchManager is missing
-            ResetBallOnly(ball);
-        }
-    }
+        Debug.Log($"GOAL for {scoringTeam}! Score: A {Blackboard.Instance.scoreA} - B {Blackboard.Instance.scoreB}");
 
-    // Only resets ball (useful for debugging or fallback)
-    private void ResetBallOnly(BallController ball)
-    {
-        ball.transform.position = Vector2.zero;
-        ball.rb.velocity = Vector2.zero;
-        ball.rb.angularVelocity = 0f;
+        FindObjectOfType<MatchManager>()?.ResetAfterGoal(scoringTeam);
     }
 }

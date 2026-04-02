@@ -489,7 +489,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &222850972
 Transform:
   m_ObjectHideFlags: 0
@@ -575,11 +575,9 @@ MonoBehaviour:
   goalBPosition: {x: 22.25, y: 0}
   TeamAcenter: {x: 0, y: 0}
   TeamBcenter: {x: 0, y: 0}
-  timeRemaining: 0
+  timeRemaining: 90
   scoreA: 0
   scoreB: 0
-  teamAAgents: []
-  teamBAgents: []
 --- !u!1 &467052444
 GameObject:
   m_ObjectHideFlags: 0
@@ -3280,11 +3278,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1281748336}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8034b72b944caee429d70c2aa0da7326, type: 3}
+  m_Script: {fileID: 11500000, guid: c618efdfa09281644b1de68d0bc52b6d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   team: 1
-  playerPrefab: {fileID: 8403134981139032220, guid: 1cb0a43d58e78124c87a144b8414a19d, type: 3}
+  fsmPlayerPrefab: {fileID: 8403134981139032220, guid: 1cb0a43d58e78124c87a144b8414a19d, type: 3}
   teamParent: {fileID: 1281748337}
   currentTactic: {fileID: 11400000, guid: 39a95b58a4926164cbe1980def03ca9c, type: 2}
   teamCenter: {x: 0, y: 0}

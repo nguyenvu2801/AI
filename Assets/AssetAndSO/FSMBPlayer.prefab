@@ -12,9 +12,9 @@ GameObject:
   - component: {fileID: 7744274379559951005}
   - component: {fileID: 2295987379953838377}
   - component: {fileID: 3052008797753267754}
-  - component: {fileID: 8573435634815479175}
+  - component: {fileID: -6039115838493199990}
   m_Layer: 3
-  m_Name: FSM_TeamBPlayer 1
+  m_Name: FSMBPlayer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -149,7 +149,7 @@ CircleCollider2D:
   m_Offset: {x: 0, y: 0}
   serializedVersion: 2
   m_Radius: 0.5
---- !u!114 &8573435634815479175
+--- !u!114 &-6039115838493199990
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -158,16 +158,16 @@ MonoBehaviour:
   m_GameObject: {fileID: 8403134981139032220}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7705d9c825769d441b1f0a71106893c2, type: 3}
+  m_Script: {fileID: 11500000, guid: 9ba4401fc690607458f08a39087ff30a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   team: 1
   role: 2
   roleStats: {fileID: 0}
   formationWorldPos: {x: 0, y: 0}
-  wobbleAmount: 0.18
-  wobbleFrequency: 7.5
-  rb: {fileID: 0}
-  facing: {x: 1, y: 0}
+  ballPredictionTime: 0.45
+  markingRadius: 7
+  tickInterval: 0.12
   currentState: 0
-  debugState: Idle
+  debugNote: 
+  facing: {x: 1, y: 0}

@@ -23,23 +23,23 @@ public class Blackboard : MonoBehaviour
     public int scoreB;
 
     // convenience caches:
-    public List<PlayerAgent> teamAAgents = new List<PlayerAgent>();
-    public List<PlayerAgent> teamBAgents = new List<PlayerAgent>();
+    public List<IFootballAgent> teamAAgents = new List<IFootballAgent>();
+    public List<IFootballAgent> teamBAgents = new List<IFootballAgent>();
 
     void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
     }
-    public PlayerAgent GetClosestToBall(Blackboard.Team t)
+    public IFootballAgent GetClosestToBall(Team t)
     {
-        var agents = (t == Team.A) ? teamAAgents : teamBAgents;
-        PlayerAgent closest = null;
-        float minDist = float.MaxValue;
-        foreach (var a in agents)
+        var list = t == Team.A ? teamAAgents : teamBAgents;
+        IFootballAgent closest = null;
+        float best = float.MaxValue;
+        foreach (var a in list)
         {
-            float dist = Vector2.Distance(a.transform.position, ballPosition);
-            if (dist < minDist) { minDist = dist; closest = a; }
+            float d = Vector2.Distance(a.transform.position, ballPosition);
+            if (d < best) { best = d; closest = a; }
         }
         return closest;
     }

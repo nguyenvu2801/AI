@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 
 [RequireComponent(typeof(Rigidbody2D))]
-public class PlayerAgent : MonoBehaviour
+public class PlayerAgent : MonoBehaviour, IFootballAgent
 {
     #region Variable
     public Blackboard.Team team = Blackboard.Team.A;
@@ -22,6 +22,15 @@ public class PlayerAgent : MonoBehaviour
     [Range(1f, 15f)] public float wobbleFrequency = 7.5f;  
     private float wobblePhase = 0f;
     private bool isTackleStunned => tackleCooldownTimer > 0f;
+
+    Blackboard.Team IFootballAgent.team => team;
+
+    Role IFootballAgent.role => role;
+
+    Rigidbody2D IFootballAgent.rb => rb;
+
+    Vector2 IFootballAgent.facing => facing;
+
     [Header("Stats (from SO)")]
     public RoleStats roleStats;
     [Header("Formation")]
@@ -62,7 +71,7 @@ public class PlayerAgent : MonoBehaviour
     void BuildBehaviorTree()
     {
         #region condition
-        var hasBall = new ConditionNode(() => ball.currentHolder == this);
+        var hasBall = new ConditionNode(() => ball.currentHolder == (IFootballAgent)this);
         var ballNearby = new ConditionNode(() => Vector2.Distance(transform.position, ball.transform.position) < 3f);
         var inShootingRange = new ConditionNode(() =>
         {
@@ -72,7 +81,7 @@ public class PlayerAgent : MonoBehaviour
         var ballLoose = new ConditionNode(() => ball.currentHolder == null);
         var opponentHasBall = new ConditionNode(() => ball.currentHolder != null && ball.currentHolder.team != team);
         var teamHasBall = new ConditionNode(() => ball.currentHolder != null && ball.currentHolder.team == team);
-        var isClosestToBall = new ConditionNode(() => Blackboard.Instance.GetClosestToBall(team) == this);
+        var isClosestToBall = new ConditionNode(() => Blackboard.Instance.GetClosestToBall(team) == (IFootballAgent)this);
 
         var ballInOurDefensiveZone = new ConditionNode(() =>
         {
@@ -106,7 +115,7 @@ public class PlayerAgent : MonoBehaviour
         });
         var actionReturnForm = new ActionNode(() =>
         {
-            if (ball.currentHolder == this) // Got the ball while returning? Abort!
+            if (ball.currentHolder == (IFootballAgent)this)
                 return BTStatus.Failure;
             if (MoveTowards(formationWorldPos))
                 return BTStatus.Success;
@@ -231,77 +240,45 @@ public class PlayerAgent : MonoBehaviour
 
     BTStatus TryPass()
     {
-        Vector3 goalPos = (team == Blackboard.Team.A)
+        Vector2 goalPos = (team == Blackboard.Team.A)
             ? Blackboard.Instance.goalAPosition
             : Blackboard.Instance.goalBPosition;
 
-        var teammates = (team == Blackboard.Team.A)
+        var teammates = team == Blackboard.Team.A
             ? Blackboard.Instance.teamAAgents
             : Blackboard.Instance.teamBAgents;
 
-        PlayerAgent bestTeammate = null;
+        IFootballAgent bestTeammate = null;
         float bestScore = float.MaxValue;
 
         foreach (var teammate in teammates)
         {
-            if (teammate == this || teammate == null)
-                continue;
+            if (teammate == (IFootballAgent)this || teammate == null) continue;
 
             float distToGoalTeammate = Vector2.Distance(teammate.transform.position, goalPos);
             float passDistance = Vector2.Distance(transform.position, teammate.transform.position);
+            float score = distToGoalTeammate * 2.5f
+                        + passDistance * 0.6f
+                        + CountOpponentsNearPosition(teammate.transform.position, 5f) * 4f;
 
-            float score =
-                distToGoalTeammate * 2.5f +
-                passDistance * 0.6f +
-                (teammate.CountOpponentsNearby(5f) * 4f);
-
-            if (score < bestScore)
-            {
-                bestScore = score;
-                bestTeammate = teammate;
-            }
+            if (score < bestScore) { bestScore = score; bestTeammate = teammate; }
         }
 
-        if (bestTeammate == null)
-        {
-            return BTStatus.Failure;
-        }
+        if (bestTeammate == null) return BTStatus.Failure;
 
         float distToGoalMe = Vector2.Distance(transform.position, goalPos);
         float distToGoalBest = Vector2.Distance(bestTeammate.transform.position, goalPos);
-        if (distToGoalMe < 4f)
-        {
-            return BTStatus.Failure; // Prefer shooting instead of passing
-        }
 
-        if (distToGoalMe < distToGoalBest - 4f)
-        {
-            return BTStatus.Failure;
-        }
-        if (distToGoalMe < distToGoalBest - 4f)
-        {
-            return BTStatus.Failure;
-        }
+        if (distToGoalMe < 4f) return BTStatus.Failure;
+        if (distToGoalMe < distToGoalBest - 4f) return BTStatus.Failure;
 
         Vector2 passDirection = (bestTeammate.transform.position - transform.position).normalized;
-        Vector2 goalDirection = (goalPos - transform.position).normalized;
+        Vector2 goalDirection = (goalPos - (Vector2)transform.position).normalized;
 
-        float forwardDot = Vector2.Dot(passDirection, goalDirection);
+        if (Vector2.Dot(passDirection, goalDirection) < 0.35f) return BTStatus.Failure;
+        if (CountOpponentsNearPosition(bestTeammate.transform.position, 3.5f) >= 3) return BTStatus.Failure;
 
-        if (forwardDot < 0.35f)
-        {
-            return BTStatus.Failure;
-        }
-
-        if (bestTeammate.CountOpponentsNearby(3.5f) >= 3)
-        {
-            return BTStatus.Failure;
-        }
-
-        float passPower = kickPower * 1.7f;
-
-        ball.ReleaseWithForce(passDirection, passPower);
-
+        ball.ReleaseWithForce(passDirection, kickPower * 1.7f);
         debugState = "Pass";
         return BTStatus.Success;
     }
@@ -310,43 +287,48 @@ public class PlayerAgent : MonoBehaviour
     {
         if (emergencyPassCooldown <= 0f)
         {
-            int opponentsClose = CountOpponentsNearby(4f);
-            int dangerThreshold = 2;
-
-            if (opponentsClose >= dangerThreshold)
+            if (CountOpponentsNearby(4f) >= 2)
             {
-                PlayerAgent nearest = GetNearestTeammate();
-
-                // Also avoid passing if teammate is also surrounded 
-                if (nearest != null && CountPlayer(nearest, 4f) <= dangerThreshold)
+                IFootballAgent nearest = GetNearestTeammate();
+                if (nearest != null && CountOpponentsNearPosition(nearest.transform.position, 4f) <= 2)
                 {
-                    // Emergency pass
                     ball.ReleaseWithForce(
                         (nearest.transform.position - transform.position).normalized,
-                        kickPower * 1.8f
-                    );
-
+                        kickPower * 1.8f);
                     debugState = "Emergency Pass";
-
-                    // Prevent chain-pass loop
                     emergencyPassCooldown = 1.0f;
-
                     return BTStatus.Success;
                 }
             }
         }
-        if (Time.time % 0.35f < Time.deltaTime) 
+
+        if (Time.time % 0.35f < Time.deltaTime)
             dribbleWobbleOffset = new Vector2(0, Random.Range(-2.5f, 2.5f));
+
         Vector2 goal = (team == Blackboard.Team.A)
             ? Blackboard.Instance.goalAPosition
             : Blackboard.Instance.goalBPosition;
 
-        Vector2 finalTarget = goal + dribbleWobbleOffset;
-        if (MoveTowards(finalTarget, 2f))
-            return BTStatus.Success;
-
+        if (MoveTowards(goal + dribbleWobbleOffset, 2f)) return BTStatus.Success;
         debugState = "Dribbling - Goal";
         return BTStatus.Running;
+    }
+
+    IFootballAgent GetNearestTeammate()
+    {
+        var mates = team == Blackboard.Team.A
+            ? Blackboard.Instance.teamAAgents
+            : Blackboard.Instance.teamBAgents;
+
+        IFootballAgent closest = null;
+        float bestDist = float.MaxValue;
+        foreach (var t in mates)
+        {
+            if (t == (IFootballAgent)this) continue;
+            float d = Vector2.Distance(transform.position, t.transform.position);
+            if (d < bestDist) { bestDist = d; closest = t; }
+        }
+        return closest;
     }
 
     BTStatus TryTackle()
@@ -410,21 +392,7 @@ public class PlayerAgent : MonoBehaviour
         if (ballCtrl != null && ballCtrl.currentHolder == null)
             ballCtrl.GiveTo(this);
     }
-    int CountOpponentsNearby(float radius)
-    {
-        var opponents = (team == Blackboard.Team.A) ?
-            Blackboard.Instance.teamBAgents :
-            Blackboard.Instance.teamAAgents;
-
-        int count = 0;
-        foreach (var opp in opponents)
-        {
-            if (opp == this) continue;
-            if (Vector2.Distance(transform.position, opp.transform.position) <= radius)
-                count++;
-        }
-        return count;
-    }
+    int CountOpponentsNearby(float radius) => CountOpponentsNearPosition(transform.position, radius);
     int CountPlayer(PlayerAgent player, float radius)
     {
         var opponents = (player.team == Blackboard.Team.A)
@@ -434,34 +402,21 @@ public class PlayerAgent : MonoBehaviour
         int count = 0;
         foreach (var opp in opponents)
         {
-            if (opp == player) continue;
+            if (opp == (IFootballAgent)player) continue;
             if (Vector2.Distance(player.transform.position, opp.transform.position) <= radius)
                 count++;
         }
         return count;
     }
-    // Find the nearest teammate (for emergency pass)
-    PlayerAgent GetNearestTeammate()
+    int CountOpponentsNearPosition(Vector2 pos, float radius)
     {
-        var mates = (team == Blackboard.Team.A) ?
-            Blackboard.Instance.teamAAgents :
-            Blackboard.Instance.teamBAgents;
-
-        PlayerAgent closest = null;
-        float bestDist = float.MaxValue;
-
-        foreach (var t in mates)
-        {
-            if (t == this) continue;
-
-            float d = Vector2.Distance(transform.position, t.transform.position);
-            if (d < bestDist)
-            {
-                bestDist = d;
-                closest = t;
-            }
-        }
-        return closest;
+        var opponents = team == Blackboard.Team.A
+            ? Blackboard.Instance.teamBAgents
+            : Blackboard.Instance.teamAAgents;
+        int count = 0;
+        foreach (var opp in opponents)
+            if (opp != null && Vector2.Distance(pos, opp.transform.position) <= radius) count++;
+        return count;
     }
     public void ApplyRoleStats(TeamTactic currentTactic = null)
     {
