@@ -10,6 +10,7 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         ChaseLooseBall, Defending, Pressing,
         HasBall_AttackDecision,
         Stunned,
+        SupportRun,
         DeepDefend
     }
 
@@ -164,7 +165,11 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
                 break;
         }
 
-        if (teamHasBall) currentState = State.ReturnToZone;
+        if (teamHasBall)
+        {
+            currentState = ShouldSupportRun() ? State.SupportRun : State.ReturnToZone;
+            return;
+        }
     }
 
     void ExecuteState()
@@ -176,6 +181,7 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
             case State.ReturnToZone: ExecuteReturnToZone(); break;
             case State.InterceptBall: ExecuteInterceptBall(); break;
             case State.MarkOpponent: ExecuteMarkOpponent(); break;
+            case State.SupportRun: ExecuteSupportRun(); break;
             case State.Defending: ExecuteDefending(); break;
             case State.Pressing: ExecutePressing(); break;
             case State.HasBall_AttackDecision: ExecuteAttackWithUtility(); break;
@@ -317,7 +323,21 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         dribbleSinceTimer = 0.5f;
         debugNote = "Smart Dribble";
     }
+    void ExecuteSupportRun()
+    {
+        
+        Vector2 ballPos = ball.transform.position;
+        Vector2 goalDir = (OurAttackGoal() - ballPos).normalized;
+        Vector2 lateral = new Vector2(-goalDir.y, goalDir.x); 
 
+     
+        float side = (GetInstanceID() % 2 == 0) ? 1f : -1f;
+        Vector2 supportSpot = ballPos + goalDir * 6f + lateral * side * 4f;
+        supportSpot = Vector2.Lerp(supportSpot, formationWorldPos, 0.35f);
+
+        MoveTo(supportSpot, 0.8f);
+        debugNote = "SupportRun";
+    }
     void ExecuteShoot()
     {
         if (ball.currentHolder != (IFootballAgent)this) return;
@@ -350,7 +370,20 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         debugNote = $"Pass->{result.target.transform.name}";
         return true;
     }
+    bool ShouldSupportRun()
+    {
+        
+        if (role == Role.Goalkeeper) return false;
+        if (role == Role.Defender) return false;
 
+
+        float distToGoal = Vector2.Distance(transform.position, OurAttackGoal());
+        if (distToGoal < 5f) return false;
+
+        
+        int pressure = CountOpponentsNearPosition(transform.position, 4f);
+        return pressure < 2;
+    }
     void ExecuteReturnToZone()
     {
         if (ball.currentHolder == (IFootballAgent)this) return;
