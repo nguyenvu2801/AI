@@ -325,15 +325,22 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
     }
     void ExecuteSupportRun()
     {
-        
+
         Vector2 ballPos = ball.transform.position;
         Vector2 goalDir = (OurAttackGoal() - ballPos).normalized;
-        Vector2 lateral = new Vector2(-goalDir.y, goalDir.x); 
+        Vector2 lateral = new Vector2(-goalDir.y, goalDir.x);
 
-     
         float side = (GetInstanceID() % 2 == 0) ? 1f : -1f;
-        Vector2 supportSpot = ballPos + goalDir * 6f + lateral * side * 4f;
-        supportSpot = Vector2.Lerp(supportSpot, formationWorldPos, 0.35f);
+
+        // Strikers run much further and more aggressively
+        float forwardDistance = (role == Role.Striker) ? 11.5f : 6f;
+        float lateralDistance = (role == Role.Striker) ? 5.5f : 4f;
+
+        Vector2 supportSpot = ballPos + goalDir * forwardDistance + lateral * side * lateralDistance;
+
+        // Almost no lerp for strikers (they should commit to the run)
+        float lerpBack = (role == Role.Striker) ? 0.12f : 0.35f;
+        supportSpot = Vector2.Lerp(supportSpot, formationWorldPos, lerpBack);
 
         MoveTo(supportSpot, 0.8f);
         debugNote = "SupportRun";
@@ -372,15 +379,20 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
     }
     bool ShouldSupportRun()
     {
-        
-        if (role == Role.Goalkeeper) return false;
-        if (role == Role.Defender) return false;
 
+        if (role == Role.Goalkeeper || role == Role.Defender) return false;
 
         float distToGoal = Vector2.Distance(transform.position, OurAttackGoal());
         if (distToGoal < 5f) return false;
 
-        
+        // Strikers ignore pressure or use much higher threshold
+        if (role == Role.Striker)
+        {
+            int pressureI = CountOpponentsNearPosition(transform.position, 4f);
+            return pressureI < 3;           
+        }
+
+        // Midfielders keep original logic
         int pressure = CountOpponentsNearPosition(transform.position, 4f);
         return pressure < 2;
     }
