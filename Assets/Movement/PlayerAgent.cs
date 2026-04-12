@@ -635,12 +635,7 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
     #endregion
 
     #region Helper
-    void OnTriggerEnter2D(Collider2D col)
-    {
-        var ballCtrl = col.GetComponent<BallController>();
-        if (ballCtrl != null && ballCtrl.currentHolder == null)
-            ballCtrl.GiveTo(this);
-    }
+   
 
     int CountOpponentsNearby(float radius) => CountOpponentsNearPosition(transform.position, radius);
     int CountOpponentsNearPosition(Vector2 pos, float radius)

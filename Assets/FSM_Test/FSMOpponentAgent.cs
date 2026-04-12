@@ -588,16 +588,6 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         debugNote = "GainedBall";
     }
 
-    void OnTriggerEnter2D(Collider2D col)
-    {
-        var b = col.GetComponent<BallController>();
-        if (b != null && b.currentHolder == null)
-        {
-            b.GiveTo(this);
-            currentState = State.HasBall_AttackDecision;
-        }
-    }
-
     void MoveTo(Vector2 target, float acceptDist = 0.1f)
     {
         Vector2 dir = target - rb.position;
