@@ -129,6 +129,8 @@ MonoBehaviour:
   team: 0
   role: 2
   rb: {fileID: 4600398774360963767}
+  wobbleAmount: 0.18
+  wobbleFrequency: 7.5
   roleStats: {fileID: 0}
   formationWorldPos: {x: 0, y: 0}
   facing: {x: 1, y: 0}
