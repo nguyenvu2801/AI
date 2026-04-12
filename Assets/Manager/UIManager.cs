@@ -1,52 +1,42 @@
-//using System.Collections.Generic;
-//using TMPro;
-//using UnityEngine;
-//using UnityEngine.UI;
+using UnityEngine;
+using TMPro;
 
-//public class UIManager : MonoBehaviour
-//{
-//    public MatchManager match;
-//    public TMP_Dropdown tacticADropdown;
-//    public TMP_Dropdown tacticBDropdown;
-//    public Button changeTacticAButton;   
-//    public Button changeTacticBButton;
-//    public TeamTactic aggressiveTactic;   // Drag Aggressive.asset here in Inspector
-//    public TeamTactic balancedTactic;     // Drag Balanced.asset
-//    public TeamTactic defensiveTactic;    // Drag Defensive.asset
-//    void Start()
-//    {
-//        // Populate dropdowns
-//        tacticADropdown.options.Clear();
-//        tacticADropdown.options.Add(new TMP_Dropdown.OptionData("Aggressive"));
-//        tacticADropdown.options.Add(new TMP_Dropdown.OptionData("Balanced"));
-//        tacticADropdown.options.Add(new TMP_Dropdown.OptionData("Defensive"));
+public class UIManager : MonoBehaviour
+{
+    public MatchManager match;
 
-//        tacticBDropdown.options = new List<TMP_Dropdown.OptionData>(tacticADropdown.options);
+    [Header("Score UI")]
+    public TMP_Text scoreText;
 
-//        // Add listeners
-//        changeTacticAButton.onClick.AddListener(ChangeTacticA);
-//        changeTacticBButton.onClick.AddListener(ChangeTacticB);
-//    }
+    [Header("Time UI")]
+    public TMP_Text timeText;
 
-//    private void ChangeTacticA()
-//    {
-//        TeamTactic newTactic = GetTacticFromDropdown(tacticADropdown.value);
-//        match.teamA.ChangeTactic(newTactic);
-//    }
+    void Update()
+    {
+        if (match == null || match.bb == null) return;
 
-//    private void ChangeTacticB()
-//    {
-//        TeamTactic newTactic = GetTacticFromDropdown(tacticBDropdown.value);
-//        match.teamB.ChangeTactic(newTactic);
-//    }
+        // Update Score
+        if (scoreText != null)
+        {
+            scoreText.text = $"{match.bb.scoreA}  -  {match.bb.scoreB}";
+        }
 
-//    private TeamTactic GetTacticFromDropdown(int value)
-//    {
-//        return value switch
-//        {
-//            0 => aggressiveTactic,
-//            1 => balancedTactic,
-//            _ => defensiveTactic
-//        };
-//    }
-//}
+        // Update Time
+        if (timeText != null)
+        {
+            int minutes = Mathf.FloorToInt(match.bb.timeRemaining / 60f);
+            int seconds = Mathf.FloorToInt(match.bb.timeRemaining % 60f);
+            timeText.text = $"{minutes:00}:{seconds:00}";
+        }
+    }
+
+    // Optional: Call this when match ends to show final result
+    public void ShowMatchEnd()
+    {
+        if (timeText != null)
+            timeText.text = "00:00";
+
+        if (scoreText != null)
+            scoreText.text = $"{match.bb.scoreA}  -  {match.bb.scoreB}  (Match Ended)";
+    }
+}
