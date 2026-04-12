@@ -54,7 +54,6 @@ public class MatchManager : MonoBehaviour
             ball.transform.position = Vector2.zero;
             ball.rb.velocity = Vector2.zero;
             ball.rb.angularVelocity = 0f;
-            ball.currentHolder = null;
         }
         teamA.SpawnFormation();
         teamA.RegisterPlayersToBlackboard();

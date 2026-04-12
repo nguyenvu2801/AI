@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   role: 0
   maxSpeed: 1
-  kickPower: 6
-  shootDistance: 3
+  kickPower: 3
+  shootDistance: 6
   tackleChance: 0.1
   pressDistance: 10

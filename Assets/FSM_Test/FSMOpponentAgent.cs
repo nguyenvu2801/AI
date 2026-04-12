@@ -219,7 +219,13 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
     void ExecuteAttackWithUtility()
     {
         if (ball.currentHolder != (IFootballAgent)this) return;
-
+        float distToGoal = Vector2.Distance(transform.position, OurAttackGoal());
+        if (distToGoal < 6f)
+        {
+            ExecuteShoot();
+            debugNote = "BLANK GOAL SHOT";
+            return;
+        }
         float uShoot = CalculateShootUtility();
         float uPass = CalculatePassUtility();
         float uDribble = CalculateDribbleUtility();
@@ -245,6 +251,9 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
     {
         Vector2 goal = OurAttackGoal();
         float dist = Vector2.Distance(transform.position, goal);
+      
+      
+
         if (dist > shootDistance * 1.15f || shootCooldown > 0f) return 0f;
         if (!HasClearLineOfSight(transform.position, goal, 1.9f)) return 0f;
 
