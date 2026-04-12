@@ -6,7 +6,7 @@ public class TeamManager : MonoBehaviour
     public Blackboard.Team team;
     public GameObject playerPrefab;
     public Transform teamParent;
-    private int playerCount = 11;
+    private int playerCount = 6;
     public TeamTactic currentTactic;
 
     public Vector2 teamCenter = Vector2.zero;

@@ -643,24 +643,6 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
     }
 
     int CountOpponentsNearby(float radius) => CountOpponentsNearPosition(transform.position, radius);
-
-    int CountPlayer(PlayerAgent player, float radius)
-    {
-        var opponents = (player.team == Blackboard.Team.A)
-            ? Blackboard.Instance.teamBAgents
-            : Blackboard.Instance.teamAAgents;
-
-        int count = 0;
-        foreach (var opp in opponents)
-        {
-            if (opp == (IFootballAgent)player) continue;
-            if (Vector2.Distance(player.transform.position, opp.transform.position) <= radius)
-                count++;
-        }
-
-        return count;
-    }
-
     int CountOpponentsNearPosition(Vector2 pos, float radius)
     {
         var opponents = team == Blackboard.Team.A

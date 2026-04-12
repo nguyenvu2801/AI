@@ -9,7 +9,7 @@ public class FSMTeamManager : MonoBehaviour
     public TeamTactic currentTactic;
     public Vector2 teamCenter = Vector2.zero;
 
-    private int playerCount = 11;
+    private int playerCount = 6;
     private List<FSMOpponentAgent> players = new List<FSMOpponentAgent>();
     private Dictionary<Role, RoleStats> roleStatsMap = new Dictionary<Role, RoleStats>();
 
