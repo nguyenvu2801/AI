@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Defender
   m_EditorClassIdentifier: 
   role: 3
-  maxSpeed: 1
+  maxSpeed: 2
   kickPower: 3
   shootDistance: 0
   tackleChance: 1

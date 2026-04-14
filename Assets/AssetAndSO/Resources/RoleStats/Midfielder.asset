@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Midfielder
   m_EditorClassIdentifier: 
   role: 2
-  maxSpeed: 1
+  maxSpeed: 2
   kickPower: 3
   shootDistance: 4
   tackleChance: 0.3
-  pressDistance: 5
+  pressDistance: 8

@@ -903,8 +903,8 @@ MonoBehaviour:
   teamB: {fileID: 1281748338}
   ball: {fileID: 1735684526}
   bb: {fileID: 310122675}
-  tacticA: {fileID: 11400000, guid: 94607c7499fa2184d8e2b08d0b9d0f47, type: 2}
-  tacticB: {fileID: 11400000, guid: 39a95b58a4926164cbe1980def03ca9c, type: 2}
+  tacticA: {fileID: 11400000, guid: 39a95b58a4926164cbe1980def03ca9c, type: 2}
+  tacticB: {fileID: 11400000, guid: c1eec63d3802df448ab26c69b61a971e, type: 2}
   matchDuration: 90
   resetDelay: 1.2
 --- !u!1 &977939665
