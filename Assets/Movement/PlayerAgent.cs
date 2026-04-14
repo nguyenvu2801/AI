@@ -16,6 +16,8 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
     private float emergencyPassCooldown = 0f;
     private float postTackleAttackTimer = 0f;
     private float tackleCooldownTimer = 0f;
+    private float shootCooldown = 0f;
+    private float passCooldown = 0f;
 
     private const float TackleStun = 3f;
 
@@ -156,11 +158,8 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
         root = new SelectorNode(
             new SequenceNode(hasBall, actionAttackWithUtility),
 
-            new SequenceNode(recentlyWonTackle, new SelectorNode(
-                actionPass,
-                actionDribble,
-                actionShoot
-            )),
+         new SequenceNode(recentlyWonTackle, new SelectorNode(actionPass, actionDribble, actionShoot)),
+         new SequenceNode(hasBall, recentlyWonTackle, new SelectorNode(actionPass, actionDribble, actionShoot)),
 
             new SequenceNode(teamHasBall, actionSupport),
 
@@ -168,13 +167,13 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
             new SequenceNode(ballLoose, isClosestToBall, actionChaseBall),
 
             new SequenceNode(opponentHasBall, new SelectorNode(
-                new SequenceNode(isDefender, defenderShouldEngage, actionTackle),
-                new SequenceNode(opponentInPressRange, actionTackle),
-                new SequenceNode(isDefender, ballInOurDefensiveZone, actionPress),
-                new SequenceNode(isNotDefender, opponentInPressRange, actionPress),
-                new SequenceNode(isDefender, actionMark),
-                actionReturnForm
-            )),
+            new SequenceNode(isDefender, defenderShouldEngage, actionTackle),
+            new SequenceNode(opponentInPressRange, actionTackle),
+            new SequenceNode(isDefender, ballInOurDefensiveZone, actionPress),
+            new SequenceNode(isNotDefender, opponentInPressRange, actionPress),
+            new SequenceNode(isDefender, ballInOurDefensiveZone, actionMark), 
+            new SequenceNode(isDefender, actionReturnForm),                   // retreat if ball is far
+            actionReturnForm)),
 
             actionReturnForm
         );
@@ -185,23 +184,20 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
     void Update()
     {
         if (root != null) root.Tick();
-
+        if (shootCooldown > 0f) shootCooldown -= Time.deltaTime;
+        if (passCooldown > 0f) passCooldown -= Time.deltaTime;
         if (postTackleAttackTimer > 0f)
             postTackleAttackTimer -= Time.deltaTime;
-
         if (rb.velocity.magnitude > 0.01f)
             facing = rb.velocity.normalized;
-
         if (emergencyPassCooldown > 0f)
             emergencyPassCooldown -= Time.deltaTime;
-
         if (tackleCooldownTimer > 0f)
         {
             tackleCooldownTimer -= Time.deltaTime;
             if (tackleCooldownTimer > 0f)
                 rb.velocity = Vector2.zero;
         }
-
         if (rb.velocity.sqrMagnitude > 0.01f)
             facing = rb.velocity.normalized;
     }
@@ -244,12 +240,15 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
     BTStatus SupportMove()
     {
         Vector2 oppGoal = GetOpponentGoalPosition();
-        Vector2 dir = (oppGoal - formationWorldPos).normalized;
-        float distToGoal = Vector2.Distance(formationWorldPos, oppGoal);
-        float pushDist = Mathf.Min(distToGoal * 0.7f, pressDistance);
-        Vector2 supportTarget = formationWorldPos + dir * pushDist;
+        Vector2 dir = (oppGoal - (Vector2)transform.position).normalized; // from self, not formation
+        float pushDist = role == Role.Defender ? 10f :
+                         role == Role.Midfielder ? 20f : 27f;
+        Vector2 supportTarget = (Vector2)transform.position + dir * pushDist;
 
-        if (MoveTowards(supportTarget))
+        // Don't push past a safe threshold toward goal
+        Vector2 cappedTarget = Vector2.MoveTowards(formationWorldPos, oppGoal, pushDist);
+
+        if (MoveTowards(cappedTarget))
             return BTStatus.Success;
 
         debugState = "Support";
@@ -285,6 +284,7 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
 
     float CalculateShootUtility()
     {
+        if (shootCooldown > 0f) return 0f;
         Vector2 goal = GetOpponentGoalPosition();
         float dist = Vector2.Distance(transform.position, goal);
 
@@ -305,6 +305,7 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
 
     float CalculatePassUtility()
     {
+        if (passCooldown > 0f) return 0f;
         Vector2 goalPos = GetOpponentGoalPosition();
         var teammates = team == Blackboard.Team.A ? Blackboard.Instance.teamAAgents : Blackboard.Instance.teamBAgents;
 
@@ -373,6 +374,7 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
         }
 
         ball.KickTowards(goal, kickPower);
+        shootCooldown = 2f;
         debugState = "Shoot";
         return BTStatus.Success;
     }
@@ -416,36 +418,61 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
         if (CountOpponentsNearPosition(bestTeammate.transform.position, 3.5f) >= 3) return BTStatus.Failure;
 
         ball.ReleaseWithForce(passDirection, kickPower * 1.7f);
+        passCooldown = 5f;
         debugState = "Pass";
         return BTStatus.Success;
     }
-
-    BTStatus DoDribble()
-    {
-        if (emergencyPassCooldown <= 0f)
+        BTStatus DoDribble()
         {
-            if (CountOpponentsNearby(4f) >= 2)
+            if (emergencyPassCooldown <= 0f && CountOpponentsNearby(3f) >= 2)
             {
-                IFootballAgent nearest = GetNearestTeammate();
-                if (nearest != null && CountOpponentsNearPosition(nearest.transform.position, 4f) <= 2)
+                Vector2 goalDir = (GetOpponentGoalPosition() - (Vector2)transform.position).normalized;
+
+                var mates = team == Blackboard.Team.A
+                    ? Blackboard.Instance.teamAAgents
+                    : Blackboard.Instance.teamBAgents;
+
+                IFootballAgent bestTarget = null;
+                float bestScore = float.MinValue;
+
+                foreach (var mate in mates)
+                {
+                    if (mate == (IFootballAgent)this || mate == null) continue;
+                    if (CountOpponentsNearPosition(mate.transform.position, 4f) > 2) continue;
+                    if (!HasClearLineOfSight(transform.position, mate.transform.position, 1.3f)) continue;
+
+                    Vector2 toMate = (mate.transform.position - transform.position).normalized;
+                    float forwardness = Vector2.Dot(toMate, goalDir); // -1 to 1
+
+                
+                    if (forwardness < -0.1f) continue;
+
+                    float score = forwardness;
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestTarget = mate;
+                    }
+                }
+
+                if (bestTarget != null)
                 {
                     ball.ReleaseWithForce(
-                        (nearest.transform.position - transform.position).normalized,
+                        (bestTarget.transform.position - transform.position).normalized,
                         kickPower * 1.8f);
-
-                    debugState = "Emergency Pass";
+                    debugState = "Emergency Pass (Forward)";
                     emergencyPassCooldown = 1.0f;
                     return BTStatus.Success;
                 }
             }
+
+            // No good pass target found — just dribble through it
+            Vector2 dribbleTarget = GetBestDribbleTarget(10f);
+            if (MoveTowards(dribbleTarget, 2f)) return BTStatus.Success;
+
+            debugState = "Dribbling - Smart Space";
+            return BTStatus.Running;
         }
-
-        Vector2 dribbleTarget = GetBestDribbleTarget(10f);
-        if (MoveTowards(dribbleTarget, 2f)) return BTStatus.Success;
-
-        debugState = "Dribbling - Smart Space";
-        return BTStatus.Running;
-    }
 
     BTStatus TryTackle()
     {
