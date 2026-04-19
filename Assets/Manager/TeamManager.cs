@@ -67,7 +67,7 @@ public class TeamManager : MonoBehaviour
         {
             Vector2 relPos = formationData.positions[i];
 
-            // Mirror X for Team B (assumes positions defined for Team A: negative X = defense)
+            // Mirror X for Team B 
             if (team == Blackboard.Team.B)
             {
                 relPos.x = -relPos.x;

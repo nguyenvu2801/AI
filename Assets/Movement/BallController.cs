@@ -37,7 +37,7 @@ public class BallController : MonoBehaviour
         rb.isKinematic = true;
         rb.velocity = Vector2.zero;
 
-        // Optional: tiny delay before this player can pick it up again
+        //tiny delay before this player can pick it up again
         ignoreSameHolderUntil = Time.time + 0.12f;
 
         agent.OnGainBall(this);
@@ -47,7 +47,7 @@ public class BallController : MonoBehaviour
     {
         if (currentHolder == null) return;
 
-        // Clear holder FIRST
+        // Clear holder 
         var oldHolder = currentHolder;
         currentHolder = null;
 
@@ -56,7 +56,7 @@ public class BallController : MonoBehaviour
 
         ignoreSameHolderUntil = Time.time + 0.18f;   // grace period
 
-        // Optional visual spin
+        //  visual spin
         rb.angularVelocity = Random.Range(-220f, 220f);
     }
 
@@ -68,11 +68,11 @@ public class BallController : MonoBehaviour
         ReleaseWithForce(dir, power * kickForce);
     }
 
-    // Move the pickup logic HERE (cleaner than duplicating in agents)
+
     void OnTriggerEnter2D(Collider2D col)
     {
         if (Time.time < ignoreSameHolderUntil) return;
-        if (currentHolder != null) return;   // already held
+        if (currentHolder != null) return;   
 
         var agent = col.GetComponent<IFootballAgent>();
         if (agent != null)
