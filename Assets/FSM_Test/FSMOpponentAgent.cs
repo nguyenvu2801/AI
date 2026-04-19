@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+
 /// <summary>
 /// Finite State Machine (FSM) based AI opponent for a 2D football/soccer game.
 /// Handles all player behaviors: defending, marking, pressing, attacking, passing, shooting, etc.
@@ -17,7 +18,8 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         SupportRun,
         DeepDefend
     }
-
+    #region Variable
+    #region Identity & Inspector Fields
     [Header("Identity")]
     public Blackboard.Team team = Blackboard.Team.B;
     public Role role = Role.Midfielder;
@@ -36,7 +38,9 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
     [Header("Debug")]
     public State currentState = State.Idle;
     public string debugNote = "";
+    #endregion
 
+    #region Components & References
     public Rigidbody2D rb { get; private set; }
     public Vector2 facing = Vector2.right;
 
@@ -45,14 +49,22 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
     Rigidbody2D IFootballAgent.rb => rb;
     Vector2 IFootballAgent.facing => facing;
 
-    private float maxSpeed, kickPower, shootDistance, tackleChance, pressDistance;
-    private float stunTimer, shootCooldown, passCooldown, stateTickTimer, dribbleSinceTimer;
     private BallController ball;
     private IFootballAgent markedOpponent;
+    #endregion
+
+    #region Stats & Timers
+    private float maxSpeed, kickPower, shootDistance, tackleChance, pressDistance;
+    private float stunTimer, shootCooldown, passCooldown, stateTickTimer, dribbleSinceTimer;
+    #endregion
+   
+    #region Private Fields
     private float wobblePhase;
     private const float WobbleAmt = 0.15f, WobbleFreq = 8f;
     private Vector2 dribbleWobbleOffset = Vector2.zero;
-
+    #endregion
+    #endregion
+    #region Unity Lifecycle
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -66,14 +78,6 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         RegisterToBlackboard();
         wobblePhase = Random.Range(0f, Mathf.PI * 2f);
         currentState = State.ReturnToZone;
-    }
-
-    void RegisterToBlackboard()
-    {
-        var bb = Blackboard.Instance;
-        if (bb == null) return;
-        if (team == Blackboard.Team.A) bb.teamAAgents.Add(this);
-        else bb.teamBAgents.Add(this);
     }
 
     void Update()
@@ -102,6 +106,19 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         if (rb.velocity.sqrMagnitude > 0.01f)
             facing = rb.velocity.normalized;
     }
+    #endregion
+
+    #region Blackboard Registration
+    void RegisterToBlackboard()
+    {
+        var bb = Blackboard.Instance;
+        if (bb == null) return;
+        if (team == Blackboard.Team.A) bb.teamAAgents.Add(this);
+        else bb.teamBAgents.Add(this);
+    }
+    #endregion
+
+    #region State Evaluation (Decision Making)
     /// <summary>
     /// Main decision-making function. Decides which state the player should be in.
     /// Called at regular intervals defined by tickInterval.
@@ -111,12 +128,14 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         bool weHaveBall = ball.currentHolder == (IFootballAgent)this;
         bool ballLoose = ball.currentHolder == null;
         bool teamHasBall = ball.currentHolder != null && ball.currentHolder.team == team;
+
         // Highest priority: We have the ball => switch to attack decision
         if (weHaveBall)
         {
             currentState = State.HasBall_AttackDecision;
             return;
         }
+
         // Loose ball logic
         if (ballLoose)
         {
@@ -127,28 +146,26 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
                 : State.ReturnToZone;
             return;
         }
+
         // Pressing logic (when close to opponent ball carrier)
         float distToCarrier = Vector2.Distance(transform.position, ball.currentHolder.transform.position);
-
         if (distToCarrier <= pressDistance * 0.85f && role != Role.Striker)
         {
             currentState = State.Pressing;
             return;
         }
+
         // Role-specific default behaviors when we don't have the ball
         switch (role)
         {
             case Role.Goalkeeper:
                 currentState = State.ReturnToZone;
                 break;
-
             case Role.Defender:
                 markedOpponent = FindMostDangerousOpponent();
-
                 Vector2 ourGoal = OurDefendGoal();
                 float distToOwnGoal = Vector2.Distance(transform.position, ourGoal);
                 const float deepDefendThreshold = 6f;
-
                 if (distToOwnGoal < deepDefendThreshold && ball.currentHolder != null && ball.currentHolder.team != team)
                 {
                     float distToBallCarrier = Vector2.Distance(transform.position, ball.currentHolder.transform.position);
@@ -158,19 +175,17 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
                         return;
                     }
                 }
-
                 currentState = markedOpponent != null ? State.MarkOpponent : State.Defending;
                 break;
-
             case Role.Midfielder:
                 markedOpponent = FindMostDangerousOpponent();
                 currentState = IsInMyZone(ball.transform.position, 10f) ? State.Pressing : State.MarkOpponent;
                 break;
-
             case Role.Striker:
                 currentState = distToCarrier < 9f ? State.Pressing : State.ReturnToZone;
                 break;
         }
+
         // If our team has the ball, consider making a support run
         if (teamHasBall)
         {
@@ -178,6 +193,9 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
             return;
         }
     }
+    #endregion
+
+    #region State Execution
     /// <summary>
     /// Executes the behavior corresponding to the current state.
     /// </summary>
@@ -197,6 +215,9 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
             case State.DeepDefend: ExecuteDeepDefend(); break;
         }
     }
+    #endregion
+
+    #region State Behaviors
     /// <summary>
     /// Special defensive mode when the opponent is threatening our goal directly.
     /// </summary>
@@ -207,9 +228,7 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
             currentState = State.Defending;
             return;
         }
-
         float dist = Vector2.Distance(transform.position, ball.currentHolder.transform.position);
-
         if (dist <= 1.4f)
         {
             AttemptTackle();
@@ -218,14 +237,86 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         else
         {
             Vector2 target = ball.currentHolder.transform.position;
-
             if (dist > 6f)
                 target = GetGoalSideInterceptPoint(ball.currentHolder.transform.position, 1.2f);
-
             MoveTo(target, 1.8f);
             debugNote = "Deep Defend - Chase & Tackle";
         }
     }
+
+    void ExecuteReturnToZone()
+    {
+        if (ball.currentHolder == (IFootballAgent)this) return;
+        Vector2 target = formationWorldPos;
+        if (ball.currentHolder != null && ball.currentHolder.team == team)
+            target += (OurAttackGoal() - formationWorldPos).normalized * Mathf.Min(pressDistance * 0.5f, 5f);
+        MoveTo(target);
+        debugNote = "ReturnZone";
+    }
+
+    void ExecuteInterceptBall()
+    {
+        MoveTo(PredictBallPosition(ballPredictionTime), 0.5f);
+        debugNote = "Intercept";
+    }
+
+    void ExecuteMarkOpponent()
+    {
+        if (markedOpponent == null)
+        {
+            currentState = State.Defending;
+            return;
+        }
+        Vector2 markTarget = GetGoalSideMarkPosition(markedOpponent.transform.position);
+        MoveTo(markTarget, 2.6f);
+        debugNote = "Smart Mark (goal-side)";
+    }
+
+    void ExecuteDefending()
+    {
+        if (ball.currentHolder == null) return;
+        Vector2 interceptPoint = GetGoalSideInterceptPoint(ball.currentHolder.transform.position, 3.5f);
+        MoveTo(interceptPoint);
+        debugNote = "Smart Block";
+    }
+
+    void ExecutePressing()
+    {
+        if (ball.currentHolder == null || ball.currentHolder.team == team)
+        {
+            currentState = State.ReturnToZone;
+            return;
+        }
+        float dist = Vector2.Distance(transform.position, ball.currentHolder.transform.position);
+        if (dist <= 1.25f)
+            AttemptTackle();
+        else
+        {
+            Vector2 interceptPoint = GetGoalSideInterceptPoint(ball.currentHolder.transform.position);
+            MoveTo(interceptPoint, 1.15f);
+            debugNote = "Smart Press";
+        }
+    }
+
+    void ExecuteSupportRun()
+    {
+        Vector2 ballPos = ball.transform.position;
+        Vector2 goalDir = (OurAttackGoal() - ballPos).normalized;
+        Vector2 lateral = new Vector2(-goalDir.y, goalDir.x);
+        float side = (GetInstanceID() % 2 == 0) ? 1f : -1f;
+        // Strikers run much further and more aggressively
+        float forwardDistance = (role == Role.Striker) ? 11.5f : 6f;
+        float lateralDistance = (role == Role.Striker) ? 5.5f : 4f;
+        Vector2 supportSpot = ballPos + goalDir * forwardDistance + lateral * side * lateralDistance;
+        // Almost no lerp for strikers (they should commit to the run)
+        float lerpBack = (role == Role.Striker) ? 0.12f : 0.35f;
+        supportSpot = Vector2.Lerp(supportSpot, formationWorldPos, lerpBack);
+        MoveTo(supportSpot, 0.8f);
+        debugNote = "SupportRun";
+    }
+    #endregion
+
+    #region Attack Logic (Has Ball)
     /// <summary>
     /// When we have the ball: decides between Shoot, Pass, or Dribble using utility scores.
     /// </summary>
@@ -239,6 +330,7 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
             debugNote = "BLANK GOAL SHOT";
             return;
         }
+
         float uShoot = CalculateShootUtility();
         float uPass = CalculatePassUtility();
         float uDribble = CalculateDribbleUtility();
@@ -260,12 +352,51 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         }
     }
 
+    void ExecuteShoot()
+    {
+        if (ball.currentHolder != (IFootballAgent)this) return;
+        if (!HasClearLineOfSight(transform.position, OurAttackGoal(), 1.9f))
+        {
+            debugNote = "Shoot Blocked";
+            currentState = State.HasBall_AttackDecision;
+            return;
+        }
+        Vector2 aimOffset = Random.value > 0.5f ? new Vector2(0f, 1.2f) : new Vector2(0f, -1.2f);
+        ball.KickTowards(OurAttackGoal() + aimOffset, kickPower);
+        shootCooldown = 0.65f;
+        debugNote = "SHOOT";
+    }
+
+    bool ExecutePass()
+    {
+        if (ball.currentHolder != (IFootballAgent)this) return false;
+        var result = FindBestPassTarget();
+        if (result.target == null) return false;
+        if (!HasClearLineOfSight(transform.position, result.target.transform.position, 1.4f))
+            return false;
+
+        ball.ReleaseWithForce((result.target.transform.position - transform.position).normalized,
+                              kickPower * result.powerRatio);
+        passCooldown = 0.85f;
+        debugNote = $"Pass->{result.target.transform.name}";
+        return true;
+    }
+
+    void ExecuteDribble()
+    {
+        if (ball.currentHolder != (IFootballAgent)this) return;
+        Vector2 bestTarget = GetBestDribbleTarget(11f);
+        MoveTo(bestTarget, 2.2f);
+        dribbleSinceTimer = 0.5f;
+        debugNote = "Smart Dribble";
+    }
+    #endregion
+
+    #region Utility Calculations
     float CalculateShootUtility()
     {
         Vector2 goal = OurAttackGoal();
         float dist = Vector2.Distance(transform.position, goal);
-      
-      
 
         if (dist > shootDistance * 1.15f || shootCooldown > 0f) return 0f;
         if (!HasClearLineOfSight(transform.position, goal, 1.9f)) return 0f;
@@ -277,47 +408,38 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
 
         float utility = distScore * 0.5f + pressure * 0.3f + facingScore * 0.3f;
         if (dist < 7f) utility += 0.4f;
-
         return Mathf.Clamp01(utility);
     }
 
     float CalculatePassUtility()
     {
         if (passCooldown > 0f) return 0f;
-
         Vector2 goal = OurAttackGoal();
         var teammates = GetTeammates();
         IFootballAgent best = null;
         float bestScore = float.MaxValue;
-
         foreach (var mate in teammates)
         {
             if (mate == null || mate == (IFootballAgent)this) continue;
             if (!HasClearLineOfSight(transform.position, mate.transform.position, 1.4f)) continue;
-
             float distToGoal = Vector2.Distance(mate.transform.position, goal);
             float passDist = Vector2.Distance(transform.position, mate.transform.position);
             int pressureOnMate = CountOpponentsNearPosition(mate.transform.position, 5f);
-
             float score = distToGoal * 2.4f + passDist * 0.55f + pressureOnMate * 4f;
-
             if (score < bestScore)
             {
                 bestScore = score;
                 best = mate;
             }
         }
-
         if (best == null) return 0f;
 
         float myDistToGoal = Vector2.Distance(transform.position, goal);
         float mateDistToGoal = Vector2.Distance(best.transform.position, goal);
-
         if (myDistToGoal < 4f || myDistToGoal < mateDistToGoal - 5f) return 0f;
 
         Vector2 passDir = (best.transform.position - transform.position).normalized;
         Vector2 goalDir = (goal - (Vector2)transform.position).normalized;
-
         if (Vector2.Dot(passDir, goalDir) < 0.35f) return 0f;
         if (CountOpponentsNearPosition(best.transform.position, 3.5f) >= 3) return 0f;
 
@@ -332,78 +454,12 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         Vector2 goalDir = (OurAttackGoal() - (Vector2)transform.position).normalized;
         float clearance = GetDirectionClearance(goalDir, 12f);
         float spaceScore = clearance / 12f;
-
         return Mathf.Clamp01((1f - pressure) * 0.7f + spaceScore * 0.45f);
     }
 
-    void ExecuteDribble()
-    {
-        if (ball.currentHolder != (IFootballAgent)this) return;
-
-        Vector2 bestTarget = GetBestDribbleTarget(11f);
-        MoveTo(bestTarget, 2.2f);
-        dribbleSinceTimer = 0.5f;
-        debugNote = "Smart Dribble";
-    }
-    void ExecuteSupportRun()
-    {
-
-        Vector2 ballPos = ball.transform.position;
-        Vector2 goalDir = (OurAttackGoal() - ballPos).normalized;
-        Vector2 lateral = new Vector2(-goalDir.y, goalDir.x);
-
-        float side = (GetInstanceID() % 2 == 0) ? 1f : -1f;
-
-        // Strikers run much further and more aggressively
-        float forwardDistance = (role == Role.Striker) ? 11.5f : 6f;
-        float lateralDistance = (role == Role.Striker) ? 5.5f : 4f;
-
-        Vector2 supportSpot = ballPos + goalDir * forwardDistance + lateral * side * lateralDistance;
-
-        // Almost no lerp for strikers (they should commit to the run)
-        float lerpBack = (role == Role.Striker) ? 0.12f : 0.35f;
-        supportSpot = Vector2.Lerp(supportSpot, formationWorldPos, lerpBack);
-
-        MoveTo(supportSpot, 0.8f);
-        debugNote = "SupportRun";
-    }
-    void ExecuteShoot()
-    {
-        if (ball.currentHolder != (IFootballAgent)this) return;
-
-        if (!HasClearLineOfSight(transform.position, OurAttackGoal(), 1.9f))
-        {
-            debugNote = "Shoot Blocked";
-            currentState = State.HasBall_AttackDecision;
-            return;
-        }
-
-        Vector2 aimOffset = Random.value > 0.5f ? new Vector2(0f, 1.2f) : new Vector2(0f, -1.2f);
-        ball.KickTowards(OurAttackGoal() + aimOffset, kickPower);
-        shootCooldown = 0.65f;
-        debugNote = "SHOOT";
-    }
-
-    bool ExecutePass()
-    {
-        if (ball.currentHolder != (IFootballAgent)this) return false;
-
-        var result = FindBestPassTarget();
-        if (result.target == null) return false;
-        if (!HasClearLineOfSight(transform.position, result.target.transform.position, 1.4f))
-            return false;
-
-        ball.ReleaseWithForce((result.target.transform.position - transform.position).normalized,
-                              kickPower * result.powerRatio);
-        passCooldown = 0.85f;
-        debugNote = $"Pass->{result.target.transform.name}";
-        return true;
-    }
     bool ShouldSupportRun()
     {
-
         if (role == Role.Goalkeeper || role == Role.Defender) return false;
-
         float distToGoal = Vector2.Distance(transform.position, OurAttackGoal());
         if (distToGoal < 5f) return false;
 
@@ -411,77 +467,16 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         if (role == Role.Striker)
         {
             int pressureI = CountOpponentsNearPosition(transform.position, 4f);
-            return pressureI < 3;           
+            return pressureI < 3;
         }
 
         // Midfielders keep original logic
         int pressure = CountOpponentsNearPosition(transform.position, 4f);
         return pressure < 2;
     }
-    void ExecuteReturnToZone()
-    {
-        if (ball.currentHolder == (IFootballAgent)this) return;
-
-        Vector2 target = formationWorldPos;
-        if (ball.currentHolder != null && ball.currentHolder.team == team)
-            target += (OurAttackGoal() - formationWorldPos).normalized * Mathf.Min(pressDistance * 0.5f, 5f);
-
-        MoveTo(target);
-        debugNote = "ReturnZone";
-    }
-
-    void ExecuteInterceptBall()
-    {
-        MoveTo(PredictBallPosition(ballPredictionTime), 0.5f);
-        debugNote = "Intercept";
-    }
-
-    void ExecuteMarkOpponent()
-    {
-        if (markedOpponent == null)
-        {
-            currentState = State.Defending;
-            return;
-        }
-
-        Vector2 markTarget = GetGoalSideMarkPosition(markedOpponent.transform.position);
-        MoveTo(markTarget, 2.6f);
-        debugNote = "Smart Mark (goal-side)";
-    }
-
-    void ExecuteDefending()
-    {
-        if (ball.currentHolder == null) return;
-
-        Vector2 interceptPoint = GetGoalSideInterceptPoint(ball.currentHolder.transform.position, 3.5f);
-        MoveTo(interceptPoint);
-        debugNote = "Smart Block";
-    }
-
-    void ExecutePressing()
-    {
-        if (ball.currentHolder == null || ball.currentHolder.team == team)
-        {
-            currentState = State.ReturnToZone;
-            return;
-        }
-
-        float dist = Vector2.Distance(transform.position, ball.currentHolder.transform.position);
-
-        if (dist <= 1.25f)
-            AttemptTackle();
-        else
-        {
-            Vector2 interceptPoint = GetGoalSideInterceptPoint(ball.currentHolder.transform.position);
-            MoveTo(interceptPoint, 1.15f);
-            debugNote = "Smart Press";
-        }
-    }
-
     void AttemptTackle()
     {
         if (ball.currentHolder == null || ball.currentHolder.team == team) return;
-
         float chance = Mathf.Clamp(tackleChance
             * (ball.currentHolder.rb.velocity.magnitude > 3f ? 0.62f : 1f)
             * (rb.velocity.magnitude < 1.8f ? 1.22f : 1f), 0.22f, 0.87f);
@@ -499,6 +494,10 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
             debugNote = "Tackle FAIL";
         }
     }
+    #endregion
+
+    #region Tactical Helpers
+
 
     Vector2 GetGoalSideMarkPosition(Vector2 opponentPos, float offset = 2.8f)
     {
@@ -513,7 +512,9 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         Vector2 dirToGoal = (ourGoal - carrierPos).normalized;
         return carrierPos + dirToGoal * offset;
     }
+    #endregion
 
+    #region Vision & Clearance
     private bool HasClearLineOfSight(Vector2 start, Vector2 end, float clearanceRadius = 1.6f)
     {
         Vector2 dir = end - start;
@@ -528,21 +529,12 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
             Vector2 toOpp = (Vector2)opp.transform.position - start;
             float oppDist = toOpp.magnitude;
             if (oppDist > dist + 3f || oppDist < 0.5f) continue;
-
             float proj = Vector2.Dot(toOpp, dir);
             if (proj < 0f || proj > dist) continue;
-
             float perp = (toOpp - dir * proj).magnitude;
             if (perp <= clearanceRadius) return false;
         }
         return true;
-    }
-
-    private Vector2 Rotate(Vector2 v, float angleDeg)
-    {
-        float rad = angleDeg * Mathf.Deg2Rad;
-        float c = Mathf.Cos(rad), s = Mathf.Sin(rad);
-        return new Vector2(v.x * c - v.y * s, v.x * s + v.y * c);
     }
 
     private float GetDirectionClearance(Vector2 dir, float maxLook = 12f, float sideClearance = 2.3f)
@@ -550,24 +542,23 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         float clearance = maxLook;
         var opponents = GetOpponents();
         Vector2 pos = transform.position;
-
         foreach (var opp in opponents)
         {
             if (opp == null) continue;
             Vector2 toOpp = (Vector2)opp.transform.position - pos;
             float distToOpp = toOpp.magnitude;
             if (distToOpp > maxLook + 4f) continue;
-
             float proj = Vector2.Dot(toOpp, dir);
             if (proj < 0f) continue;
-
             float perpDist = (toOpp - dir * proj).magnitude;
             if (perpDist < sideClearance)
                 clearance = Mathf.Min(clearance, proj);
         }
         return clearance;
     }
+    #endregion
 
+    #region Dribble & Movement
     private Vector2 GetBestDribbleTarget(float lookAhead = 11f)
     {
         Vector2 goalDir = (OurAttackGoal() - (Vector2)transform.position).normalized;
@@ -581,7 +572,6 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
             float clearance = GetDirectionClearance(testDir, lookAhead + 4f);
             float alignment = Vector2.Dot(testDir, goalDir);
             float score = alignment * 1.15f + (clearance / lookAhead) * 0.95f;
-
             if (score > bestScore)
             {
                 bestScore = score;
@@ -595,12 +585,6 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         return (Vector2)transform.position + bestOffset + dribbleWobbleOffset;
     }
 
-    public void OnGainBall(BallController b)
-    {
-        currentState = State.HasBall_AttackDecision;
-        debugNote = "GainedBall";
-    }
-
     void MoveTo(Vector2 target, float acceptDist = 0.1f)
     {
         Vector2 dir = target - rb.position;
@@ -609,14 +593,22 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
             rb.velocity = Vector2.zero;
             return;
         }
-
         dir.Normalize();
+
         wobblePhase += Time.deltaTime * WobbleFreq;
         Vector2 wobbled = (dir + new Vector2(-dir.y, dir.x) * (Mathf.Sin(wobblePhase) * WobbleAmt)).normalized;
-
         rb.velocity = Vector2.Lerp(rb.velocity, wobbled * maxSpeed * (1f + Mathf.Sin(wobblePhase * 0.6f) * 0.06f), Time.deltaTime * 5f);
     }
 
+    private Vector2 Rotate(Vector2 v, float angleDeg)
+    {
+        float rad = angleDeg * Mathf.Deg2Rad;
+        float c = Mathf.Cos(rad), s = Mathf.Sin(rad);
+        return new Vector2(v.x * c - v.y * s, v.x * s + v.y * c);
+    }
+    #endregion
+
+    #region Prediction & Team Queries
     Vector2 PredictBallPosition(float t) => (Vector2)ball.transform.position + ball.rb.velocity * t;
 
     bool IsClosestOnTeamToPredicted(Vector2 pos)
@@ -631,7 +623,6 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
     {
         IFootballAgent best = null;
         float bestDist = float.MaxValue;
-
         foreach (var opp in GetOpponents())
         {
             if (opp == null) continue;
@@ -645,43 +636,10 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         return best;
     }
 
-    struct FSMPassResult { public IFootballAgent target; public float powerRatio; }
-
-    FSMPassResult FindBestPassTarget()
-    {
-        Vector2 goal = OurAttackGoal();
-        IFootballAgent best = null;
-        float bestScore = float.MaxValue, bestPower = 1f;
-
-        foreach (var m in GetTeammates())
-        {
-            if (m == null || m == (IFootballAgent)this) continue;
-            if (!HasClearLineOfSight(transform.position, m.transform.position, 1.4f)) continue;
-
-            float distToGoal = Vector2.Distance(m.transform.position, goal);
-            float passDist = Vector2.Distance(transform.position, m.transform.position);
-            int pressure = CountOpponentsNearPosition(m.transform.position, 4f);
-
-            Vector2 passDir = (m.transform.position - transform.position).normalized;
-            Vector2 goalDir = (goal - (Vector2)transform.position).normalized;
-
-            if (Vector2.Dot(passDir, goalDir) < 0.2f) continue;
-
-            float score = distToGoal * 2.1f + passDist * 0.55f + pressure * 3.8f;
-
-            if (score < bestScore)
-            {
-                bestScore = score;
-                best = m;
-                bestPower = Mathf.Clamp(passDist / 8.5f + 0.85f, 0.9f, 1.85f);
-            }
-        }
-
-        return new FSMPassResult { target = best, powerRatio = bestPower };
-    }
-
     bool IsInMyZone(Vector2 pos, float radius) => Vector2.Distance(formationWorldPos, pos) < radius;
+    #endregion
 
+    #region Goal & Team Helpers
     Vector2 OurAttackGoal() => team == Blackboard.Team.A ? Blackboard.Instance.goalAPosition : Blackboard.Instance.goalBPosition;
     Vector2 OurDefendGoal() => team == Blackboard.Team.A ? Blackboard.Instance.goalBPosition : Blackboard.Instance.goalAPosition;
 
@@ -695,7 +653,42 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
             if (opp != null && Vector2.Distance(pos, opp.transform.position) <= radius) count++;
         return count;
     }
+    #endregion
 
+    #region Pass Finding
+    struct FSMPassResult { public IFootballAgent target; public float powerRatio; }
+
+    FSMPassResult FindBestPassTarget()
+    {
+        Vector2 goal = OurAttackGoal();
+        IFootballAgent best = null;
+        float bestScore = float.MaxValue, bestPower = 1f;
+        foreach (var m in GetTeammates())
+        {
+            if (m == null || m == (IFootballAgent)this) continue;
+            if (!HasClearLineOfSight(transform.position, m.transform.position, 1.4f)) continue;
+
+            float distToGoal = Vector2.Distance(m.transform.position, goal);
+            float passDist = Vector2.Distance(transform.position, m.transform.position);
+            int pressure = CountOpponentsNearPosition(m.transform.position, 4f);
+
+            Vector2 passDir = (m.transform.position - transform.position).normalized;
+            Vector2 goalDir = (goal - (Vector2)transform.position).normalized;
+            if (Vector2.Dot(passDir, goalDir) < 0.2f) continue;
+
+            float score = distToGoal * 2.1f + passDist * 0.55f + pressure * 3.8f;
+            if (score < bestScore)
+            {
+                bestScore = score;
+                best = m;
+                bestPower = Mathf.Clamp(passDist / 8.5f + 0.85f, 0.9f, 1.85f);
+            }
+        }
+        return new FSMPassResult { target = best, powerRatio = bestPower };
+    }
+    #endregion
+
+    #region Role Stats & Events
     public void ApplyRoleStats(TeamTactic tactic = null)
     {
         if (roleStats == null)
@@ -703,7 +696,6 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
             Debug.LogWarning($"{name}: no RoleStats!");
             return;
         }
-
         maxSpeed = roleStats.maxSpeed * (tactic?.speedMultiplier ?? 1f);
         kickPower = roleStats.kickPower * (tactic?.kickPowerMultiplier ?? 1f);
         shootDistance = roleStats.shootDistance * (tactic?.shootDistanceMultiplier ?? 1f);
@@ -711,11 +703,18 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         pressDistance = roleStats.pressDistance * (tactic?.pressDistanceMultiplier ?? 1f);
     }
 
+    public void OnGainBall(BallController b)
+    {
+        currentState = State.HasBall_AttackDecision;
+        debugNote = "GainedBall";
+    }
+    #endregion
+
+    #region Gizmos
     void OnDrawGizmos()
     {
         UnityEditor.Handles.color = Color.cyan;
         UnityEditor.Handles.Label(transform.position + Vector3.up * 0.5f, $"[FSM] {currentState}\n{debugNote}");
-
         Gizmos.color = Color.cyan;
         Gizmos.DrawLine(transform.position, transform.position + (Vector3)facing * 0.6f);
 
@@ -727,8 +726,8 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
 
         Gizmos.color = new Color(1f, 0.4f, 0f, 0.15f);
         Gizmos.DrawWireSphere(transform.position, pressDistance);
-
         Gizmos.color = Color.blue;
         Gizmos.DrawWireSphere(formationWorldPos, 0.3f);
     }
+    #endregion
 }
