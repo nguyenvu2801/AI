@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.UI;
 
 public class MatchManager : MonoBehaviour
 {
@@ -10,7 +11,7 @@ public class MatchManager : MonoBehaviour
     public TeamTactic tacticA, tacticB;
     public float matchDuration = 90f;
     public float resetDelay = 1.2f;
-
+    public Button rematch;
     void Start()
     {
         if (bb == null) bb = Blackboard.Instance;
@@ -27,7 +28,12 @@ public class MatchManager : MonoBehaviour
             if (goal.scoringTeam == Blackboard.Team.A) bb.goalAPosition = goal.transform.position;
             else bb.goalBPosition = goal.transform.position;
         }
-
+     
+            if (rematch != null)
+            {
+                rematch.onClick.AddListener(Rematch);
+            }
+        
         ResetBallAndPlayers();
     }
 
@@ -49,6 +55,7 @@ public class MatchManager : MonoBehaviour
 
     void ResetBallAndPlayers()
     {
+        ball.currentHolder = null;
         if (ball != null)
         {
             ball.transform.position = Vector2.zero;
@@ -60,10 +67,26 @@ public class MatchManager : MonoBehaviour
         teamB.SpawnFormation();
         teamB.RegisterToBlackboard();
     }
+    public void Rematch()
+    {
+        if (bb == null) return;
 
+        bb.scoreA = 0;
+        bb.scoreB = 0;
+        bb.timeRemaining = matchDuration;   
+        ResetBallAndPlayers();
+        Time.timeScale = 1f;
+        enabled = true;
+
+        if (FindObjectOfType<UIManager>() is UIManager ui)
+        {
+            ui.UpdateScoreAndTimeImmediately(); 
+        }
+    }
     void EndMatch()
     {
         Debug.Log($"Match ended — A {bb.scoreA} : {bb.scoreB} B");
+        Time.timeScale = 0f;
         enabled = false;
     }
 }

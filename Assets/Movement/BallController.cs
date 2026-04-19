@@ -25,7 +25,6 @@ public class BallController : MonoBehaviour
             transform.position = currentHolder.transform.position + (Vector3)(currentHolder.facing * 0.35f);
             rb.velocity = Vector2.zero;   // safety
         }
-
         if (Blackboard.Instance != null)
             Blackboard.Instance.ballPosition = transform.position;
     }

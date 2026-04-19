@@ -1,5 +1,6 @@
 using UnityEngine;
 using TMPro;
+using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
@@ -10,7 +11,15 @@ public class UIManager : MonoBehaviour
 
     [Header("Time UI")]
     public TMP_Text timeText;
-
+    public Button quitButton;
+    void Start()
+    {
+        // Setup Quit button
+        if (quitButton != null)
+        {
+            quitButton.onClick.AddListener(QuitGame);
+        }
+    }
     void Update()
     {
         if (match == null || match.bb == null) return;
@@ -29,14 +38,23 @@ public class UIManager : MonoBehaviour
             timeText.text = $"{minutes:00}:{seconds:00}";
         }
     }
-
-    // Optional: Call this when match ends to show final result
-    public void ShowMatchEnd()
+    public void UpdateScoreAndTimeImmediately()
     {
-        if (timeText != null)
-            timeText.text = "00:00";
+        if (scoreText != null && match != null && match.bb != null)
+        {
+            scoreText.text = $"{match.bb.scoreA} - {match.bb.scoreB}";
+        }
 
-        if (scoreText != null)
-            scoreText.text = $"{match.bb.scoreA}  -  {match.bb.scoreB}  (Match Ended)";
+        if (timeText != null && match != null && match.bb != null)
+        {
+            int minutes = Mathf.FloorToInt(match.bb.timeRemaining / 60f);
+            int seconds = Mathf.FloorToInt(match.bb.timeRemaining % 60f);
+            timeText.text = $"{minutes:00}:{seconds:00}";
+        }
+    }
+
+    public void QuitGame()
+    {
+        Application.Quit();                                
     }
 }
