@@ -1,6 +1,9 @@
 using UnityEngine;
 using System.Collections.Generic;
-
+/// <summary>
+/// Core AI controller for football (soccer) agents using Behavior Tree + Utility AI hybrid.
+/// Handles all decision making, movement, and actions for players on the field.
+/// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerAgent : MonoBehaviour, IFootballAgent
 {
@@ -64,7 +67,9 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
         BuildBehaviorTree();
         wobblePhase = Random.Range(0f, 10f);
     }
-
+    /// <summary>
+    /// Registers this agent to the global Blackboard for team-wide queries.
+    /// </summary>
     void RegisterToBlackboard()
     {
         var bb = Blackboard.Instance;
@@ -74,8 +79,18 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
             else if (team == Blackboard.Team.B) bb.teamBAgents.Add(this);
         }
     }
+    #region Behavior Tree Construction
 
-    #region Tree
+    /// <summary>
+    /// Builds the hybrid Behavior Tree + Utility AI decision system.
+    /// Priority order (highest to lowest):
+    /// 1. Ball possession (Utility AI attack)
+    /// 2. Post-tackle advantage
+    /// 3. Team possession support
+    /// 4. Loose ball chase
+    /// 5. Defensive reactions (tackle/press/mark)
+    /// 6. Return to formation
+    /// </summary>
     void BuildBehaviorTree()
     {
         #region condition
@@ -156,16 +171,17 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
 
         #region Tree
         root = new SelectorNode(
+            // 1. Has ball => Attack using Utility AI
             new SequenceNode(hasBall, actionAttackWithUtility),
-
+         // 2. Just won tackle => immediate attack
          new SequenceNode(recentlyWonTackle, new SelectorNode(actionPass, actionDribble, actionShoot)),
          new SequenceNode(hasBall, recentlyWonTackle, new SelectorNode(actionPass, actionDribble, actionShoot)),
-
+            // 3. Team has possession => supportive positioning
             new SequenceNode(teamHasBall, actionSupport),
-
+            // 4. Loose ball logic
             new SequenceNode(ballLoose, ballNearby, actionChaseBall),
             new SequenceNode(ballLoose, isClosestToBall, actionChaseBall),
-
+            // 5. Defensive behavior when opponent has ball
             new SequenceNode(opponentHasBall, new SelectorNode(
             new SequenceNode(isDefender, defenderShouldEngage, actionTackle),
             new SequenceNode(opponentInPressRange, actionTackle),
@@ -174,13 +190,13 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
             new SequenceNode(isDefender, ballInOurDefensiveZone, actionMark), 
             new SequenceNode(isDefender, actionReturnForm),                   // retreat if ball is far
             actionReturnForm)),
-
+            //fallback
             actionReturnForm
         );
         #endregion
     }
     #endregion
-
+    #region Update & Cooldown Management
     void Update()
     {
         if (root != null) root.Tick();
@@ -201,7 +217,7 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
         if (rb.velocity.sqrMagnitude > 0.01f)
             facing = rb.velocity.normalized;
     }
-
+    #endregion
     #region Movement and Action
     bool MoveTowards(Vector2 target, float acceptDistance = 0.1f)
     {
@@ -256,7 +272,10 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
     }
 
     public void OnGainBall(BallController b) => debugState = "HasBall";
-
+    /// <summary>
+    /// High-level attack decision using Utility AI. Evaluates shoot, pass, and dribble utilities
+    /// and selects the best action based on current game state.
+    /// </summary>
     BTStatus AttackWithUtility()
     {
         if (ball.currentHolder != (IFootballAgent)this) return BTStatus.Failure;
@@ -281,7 +300,10 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
             return DoDribble();
         }
     }
-
+    /// <summary>
+    /// Calculates how desirable it is for this agent to take a shot right now.
+    /// Returns a value between 0 and 1 (higher = better).
+    /// </summary>
     float CalculateShootUtility()
     {
         if (shootCooldown > 0f) return 0f;
@@ -302,7 +324,11 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
 
         return Mathf.Clamp01(utility);
     }
-
+    /// <summary>
+    /// Calculates how good a pass would be right now.
+    /// Looks for the best available teammate to pass to.
+    /// Returns 0 if no good pass option exists.
+    /// </summary>
     float CalculatePassUtility()
     {
         if (passCooldown > 0f) return 0f;
@@ -349,7 +375,11 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
 
         return Mathf.Clamp01(utility);
     }
-
+    /// <summary>
+    /// Calculates how good a pass would be right now.
+    /// Looks for the best available teammate to pass to.
+    /// Returns 0 if no good pass option exists.
+    /// </summary>
     float CalculateDribbleUtility()
     {
         int nearbyOpp = CountOpponentsNearby(5f);
@@ -733,9 +763,6 @@ public class PlayerAgent : MonoBehaviour, IFootballAgent
         ShootDistance = roleStats.shootDistance * shootMult;
         TackleChance = roleStats.tackleChance * tackleMult;
         pressDistance = roleStats.pressDistance * pressMult;
-
-        Debug.Log($"{name} ({role}) - Tactic applied | Speed: {maxSpeed:F1} (x{speedMult:F2}), " +
-                  $"Kick: {kickPower:F1} (x{kickMult:F2}), ShootDist: {ShootDistance:F1}");
     }
 
     void OnDrawGizmos()

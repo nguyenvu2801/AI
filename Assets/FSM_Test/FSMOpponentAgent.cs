@@ -1,6 +1,10 @@
 using UnityEngine;
 using System.Collections.Generic;
-
+/// <summary>
+/// Finite State Machine (FSM) based AI opponent for a 2D football/soccer game.
+/// Handles all player behaviors: defending, marking, pressing, attacking, passing, shooting, etc.
+/// Implements the IFootballAgent interface.
+/// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
 {
@@ -98,19 +102,22 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
         if (rb.velocity.sqrMagnitude > 0.01f)
             facing = rb.velocity.normalized;
     }
-
+    /// <summary>
+    /// Main decision-making function. Decides which state the player should be in.
+    /// Called at regular intervals defined by tickInterval.
+    /// </summary>
     void EvaluateState()
     {
         bool weHaveBall = ball.currentHolder == (IFootballAgent)this;
         bool ballLoose = ball.currentHolder == null;
         bool teamHasBall = ball.currentHolder != null && ball.currentHolder.team == team;
-
+        // Highest priority: We have the ball => switch to attack decision
         if (weHaveBall)
         {
             currentState = State.HasBall_AttackDecision;
             return;
         }
-
+        // Loose ball logic
         if (ballLoose)
         {
             Vector2 predicted = PredictBallPosition(ballPredictionTime);
@@ -120,7 +127,7 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
                 : State.ReturnToZone;
             return;
         }
-
+        // Pressing logic (when close to opponent ball carrier)
         float distToCarrier = Vector2.Distance(transform.position, ball.currentHolder.transform.position);
 
         if (distToCarrier <= pressDistance * 0.85f && role != Role.Striker)
@@ -128,7 +135,7 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
             currentState = State.Pressing;
             return;
         }
-
+        // Role-specific default behaviors when we don't have the ball
         switch (role)
         {
             case Role.Goalkeeper:
@@ -164,14 +171,16 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
                 currentState = distToCarrier < 9f ? State.Pressing : State.ReturnToZone;
                 break;
         }
-
+        // If our team has the ball, consider making a support run
         if (teamHasBall)
         {
             currentState = ShouldSupportRun() ? State.SupportRun : State.ReturnToZone;
             return;
         }
     }
-
+    /// <summary>
+    /// Executes the behavior corresponding to the current state.
+    /// </summary>
     void ExecuteState()
     {
         switch (currentState)
@@ -188,7 +197,9 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
             case State.DeepDefend: ExecuteDeepDefend(); break;
         }
     }
-
+    /// <summary>
+    /// Special defensive mode when the opponent is threatening our goal directly.
+    /// </summary>
     void ExecuteDeepDefend()
     {
         if (ball.currentHolder == null || ball.currentHolder.team == team)
@@ -215,7 +226,9 @@ public class FSMOpponentAgent : MonoBehaviour, IFootballAgent
             debugNote = "Deep Defend - Chase & Tackle";
         }
     }
-
+    /// <summary>
+    /// When we have the ball: decides between Shoot, Pass, or Dribble using utility scores.
+    /// </summary>
     void ExecuteAttackWithUtility()
     {
         if (ball.currentHolder != (IFootballAgent)this) return;
